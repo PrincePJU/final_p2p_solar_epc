@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx cds *)",
+      "Bash(node -e \"const sqlite3 = require\\('@cap-js/sqlite'\\); const db = require\\('better-sqlite3'\\)\\('solar_epc.db'\\); const tables = db.prepare\\(\\\\\"SELECT name FROM sqlite_master WHERE type='table' ORDER BY name\\\\\"\\).all\\(\\); console.log\\(tables.map\\(t=>t.name\\).join\\('\\\\n'\\)\\);\")",
+      "Bash(node -e ' *)",
+      "Bash(curl -s http://localhost:4004/project/Projects)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(f'OK - {len\\(d[\\\\\"value\\\\\"]\\)} projects loaded'\\)\")",
+      "Bash(pkill -f \"cds watch\")"
+    ]
+  }
+}

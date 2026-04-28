@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mvc:View
+    controllerName="solar.epc.projectmanagement.login.LoginPage"
+    xmlns:mvc="sap.ui.core.mvc"
+    xmlns="sap.m"
+    xmlns:f="sap.f"
+    xmlns:core="sap.ui.core"
+    xmlns:html="http://www.w3.org/1999/xhtml"
+    displayBlock="true">
+
+    <html:style>
+        .loginShell {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0A6ED1 0%, #054E9E 60%, #032D5E 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .loginCard {
+            background: #FFFFFF;
+            border-radius: 1rem;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.22);
+            width: 100%;
+            max-width: 26rem;
+            padding: 2.5rem 2rem 2rem;
+        }
+        .loginLogo {
+            color: #0A6ED1 !important;
+        }
+        .loginSubtitle {
+            color: #6A6D70 !important;
+            font-size: 0.875rem !important;
+        }
+        .loginBtn {
+            width: 100%;
+            margin-top: 1.25rem !important;
+        }
+        .loginDivider {
+            border: none;
+            border-top: 1px solid #E5E5E5;
+            margin: 1.25rem 0 !important;
+        }
+        .roleLabel {
+            font-weight: 600 !important;
+            margin-bottom: 0.25rem !important;
+        }
+    </html:style>
+
+    <Shell id="loginShell" appWidthLimited="false" background="Transparent">
+        <app>
+            <App id="loginApp">
+                <pages>
+                    <Page id="loginPage" showHeader="false"
+                        backgroundDesign="Transparent">
+                        <content>
+                            <!-- Full-screen gradient wrapper -->
+                            <FlexBox id="loginOuter"
+                                alignItems="Center" justifyContent="Center"
+                                class="loginShell">
+
+                                <!-- Login card -->
+                                <VBox id="loginCard" class="loginCard">
+
+                                    <!-- Brand header -->
+                                    <VBox id="brandBox" alignItems="Center" class="sapUiSmallMarginBottom">
+                                        <core:Icon id="brandIcon"
+                                            src="sap-icon://energy-savings-item"
+                                            size="3rem" class="loginLogo sapUiSmallMarginBottom" />
+                                        <Title id="brandTitle" text="SolarSage EPC" level="H2" />
+                                        <Text id="brandSub"
+                                            text="Enterprise Project &amp; Procurement Platform"
+                                            class="loginSubtitle" textAlign="Center" />
+                                    </VBox>
+
+                                    <html:hr class="loginDivider" />
+
+                                    <!-- Username field -->
+                                    <Label id="lblUsername" text="Username" class="roleLabel" />
+                                    <Input id="inputUsername"
+                                        placeholder="Enter your username"
+                                        value="{login>/username}"
+                                        class="sapUiTinyMarginBottom" />
+
+                                    <!-- Password field -->
+                                    <Label id="lblPassword" text="Password" class="roleLabel sapUiTinyMarginTop" />
+                                    <Input id="inputPassword"
+                                        type="Password"
+                                        placeholder="Enter your password"
+                                        value="{login>/password}"
+                                        submit="onLoginPress"
+                                        class="sapUiTinyMarginBottom" />
+
+                                    <!-- Role selector (demo mode) -->
+                                    <MessageStrip id="demoStrip"
+                                        text="Demo mode — select a role to log in as."
+                                        type="Information"
+                                        showIcon="true"
+                                        showCloseButton="false"
+                                        class="sapUiTinyMarginBottom sapUiTinyMarginTop" />
+
+                                    <Label id="lblRole" text="Role" class="roleLabel sapUiTinyMarginTop" />
+                                    <Select id="roleSelect"
+                                        selectedKey="{login>/selectedRole}"
+                                        width="100%">
+                                        <core:Item id="roleItemEngineer"    key="ENGINEER"            text="Engineer" />
+                                        <core:Item id="roleItemSenior"      key="PROJECT_MANAGER"     text="Senior Engineer" />
+                                        <core:Item id="roleItemProcurement" key="PROCUREMENT_OFFICER" text="Procurement Officer" />
+                                        <core:Item id="roleItemSite"        key="SITE_ENGINEER"       text="Site Engineer" />
+                                        <core:Item id="roleItemFinance"     key="FINANCE_OFFICER"     text="Finance Officer" />
+                                        <core:Item id="roleItemMgmt"        key="MANAGEMENT"          text="Management" />
+                                    </Select>
+
+                                    <!-- Login button -->
+                                    <Button id="btnLogin"
+                                        text="Sign In"
+                                        type="Emphasized"
+                                        press="onLoginPress"
+                                        class="loginBtn" />
+
+                                    <!-- Footer -->
+                                    <Text id="loginFooter"
+                                        text="© 2026 SolarSage EPC. All rights reserved."
+                                        class="loginSubtitle sapUiTinyMarginTop"
+                                        textAlign="Center" />
+
+                                </VBox>
+                            </FlexBox>
+                        </content>
+                    </Page>
+                </pages>
+            </App>
+        </app>
+    </Shell>
+</mvc:View>

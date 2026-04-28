@@ -1,0 +1,208 @@
+{
+  "_version": "1.83.0",
+  "sap.app": {
+    "id": "solar.epc.projectmanagement",
+    "type": "application",
+    "i18n": "i18n/i18n.properties",
+    "applicationVersion": {
+      "version": "0.0.1"
+    },
+    "title": "{{appTitle}}",
+    "description": "{{appDescription}}",
+    "resources": "resources.json",
+    "sourceTemplate": {
+      "id": "@sap/generator-fiori:lrop",
+      "version": "1.22.0",
+      "toolsId": "5950fd3f-09a7-43fc-b949-a55b808bdf14"
+    },
+    "dataSources": {
+      "mainService": {
+        "uri": "/project/",
+        "type": "OData",
+        "settings": {
+          "annotations": [],
+          "odataVersion": "4.01"
+        }
+      }
+    }
+  },
+  "sap.ui": {
+    "technology": "UI5",
+    "icons": {
+      "icon": "",
+      "favIcon": "",
+      "phone": "",
+      "phone@2": "",
+      "tablet": "",
+      "tablet@2": ""
+    },
+    "deviceTypes": {
+      "desktop": true,
+      "tablet": true,
+      "phone": true
+    }
+  },
+  "sap.ui5": {
+    "flexEnabled": true,
+    "dependencies": {
+      "minUI5Version": "1.147.1",
+      "libs": {
+        "sap.m": {},
+        "sap.ui.core": {},
+        "sap.fe.templates": {}
+      }
+    },
+    "contentDensities": {
+      "compact": true,
+      "cozy": true
+    },
+    "models": {
+      "i18n": {
+        "type": "sap.ui.model.resource.ResourceModel",
+        "settings": {
+          "bundleName": "solar.epc.projectmanagement.i18n.i18n"
+        }
+      },
+      "": {
+        "dataSource": "mainService",
+        "preload": true,
+        "settings": {
+          "operationMode": "Server",
+          "autoExpandSelect": true,
+          "earlyRequests": true
+        }
+      }
+    },
+    "resources": {
+      "css": [
+        {
+          "uri": "home/HomePage.css"
+        }
+      ]
+    },
+    "routing": {
+      "config": {},
+      "routes": [
+        {
+          "pattern": "",
+          "name": "LoginPage",
+          "target": "LoginPage"
+        },
+        {
+          "pattern": "home",
+          "name": "HomePage",
+          "target": "HomePage"
+        },
+        {
+          "pattern": "projects:?query:",
+          "name": "ProjectsList",
+          "target": "ProjectsList"
+        },
+        {
+          "pattern": "Projects({key}):?query:",
+          "name": "ProjectsObjectPage",
+          "target": "ProjectsObjectPage"
+        }
+      ],
+      "targets": {
+        "ProjectsList": {
+          "type": "Component",
+          "id": "ProjectsList",
+          "name": "sap.fe.templates.ListReport",
+          "options": {
+            "settings": {
+              "contextPath": "/Projects",
+              "variantManagement": "Page",
+              "navigation": {
+                "Projects": {
+                  "detail": {
+                    "route": "ProjectsObjectPage"
+                  }
+                }
+              },
+              "initialLoad": true,
+              "controlConfiguration": {
+                "@com.sap.vocabularies.UI.v1.LineItem": {
+                  "tableSettings": {
+                    "type": "GridTable",
+                    "selectionMode": "Single",
+                    "enableExport": true,
+                    "condensedTableLayout": false,
+                    "personalization": {
+                      "column": true,
+                      "sort": true,
+                      "filter": true,
+                      "group": true
+                    }
+                  },
+                  "columns": {
+                    "DataField::status": {
+                      "importance": "High",
+                      "width": "140px"
+                    },
+                    "DataField::projectCode": {
+                      "importance": "High",
+                      "width": "160px"
+                    },
+                    "DataField::budget": {
+                      "importance": "High",
+                      "width": "160px"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "ProjectsObjectPage": {
+          "type": "Component",
+          "id": "ProjectsObjectPage",
+          "name": "sap.fe.templates.ObjectPage",
+          "options": {
+            "settings": {
+              "editableHeaderContent": true,
+              "contextPath": "/Projects",
+              "controlConfiguration": {
+                "boqItems/@com.sap.vocabularies.UI.v1.LineItem": {
+                  "tableSettings": {
+                    "type": "GridTable",
+                    "enableExport": true,
+                    "personalization": { "column": true, "sort": true }
+                  }
+                },
+                "materialRequests/@com.sap.vocabularies.UI.v1.LineItem": {
+                  "tableSettings": {
+                    "type": "ResponsiveTable",
+                    "enableExport": true
+                  }
+                }
+              },
+              "sectionLayout": "Tabs"
+            }
+          }
+        },
+        "LoginPage": {
+          "type": "View",
+          "id": "LoginPage",
+          "name": "solar.epc.projectmanagement.login.LoginPage",
+          "viewLevel": 0
+        },
+        "HomePage": {
+          "type": "View",
+          "id": "HomePage",
+          "name": "solar.epc.projectmanagement.home.HomePage",
+          "viewLevel": 1
+        }
+      }
+    }
+  },
+  "sap.fiori": {
+    "registrationIds": [],
+    "archeType": "transactional"
+  },
+  "sap.fe": {
+    "app": {
+      "enableLazyLoading": true
+    }
+  }
+}
