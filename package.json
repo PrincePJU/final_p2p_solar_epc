@@ -24,6 +24,19 @@
         "credentials": {
           "database": "solar_epc.db"
         }
+      },
+      "auth": {
+        "kind": "mocked",
+        "users": {
+          "nikitasawant243@gmail.com": {
+            "roles": [
+              "Engineer",
+              "ProjectManager",
+              "Management",
+              "ProcurementOfficer"
+            ]
+          }
+        }
       }
     },
     "features": {
