@@ -1,0 +1,39 @@
+.loginShell {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #0a6ed1 0%, #054e9e 60%, #032d5e 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.loginCard {
+    background: #ffffff;
+    border-radius: 1rem;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.22);
+    width: 100%;
+    max-width: 26rem;
+    padding: 2.5rem 2rem 2rem;
+}
+
+.loginLogo {
+    color: #0a6ed1 !important;
+}
+
+.loginSubtitle {
+    color: #6a6d70 !important;
+    font-size: 0.875rem !important;
+}
+
+.loginBtn {
+    width: 100%;
+    margin-top: 1.25rem !important;
+}
+
+.loginDivider {
+    margin: 1.25rem 0 !important;
+}
+
+.roleLabel {
+    font-weight: 600 !important;
+    margin-bottom: 0.25rem !important;
+}

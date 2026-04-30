@@ -93,6 +93,9 @@
     "resources": {
       "css": [
         {
+          "uri": "login/LoginPage.css"
+        },
+        {
           "uri": "home/HomePage.css"
         }
       ]
@@ -156,12 +159,12 @@
           "target": "QuotationComparison"
         },
         {
-          "pattern": "MRApproval:?query:",
+          "pattern": "MaterialRequests:?query:",
           "name": "MRApprovalDashboard",
           "target": "MRApprovalDashboard"
         },
         {
-          "pattern": "MRApproval({key}):?query:",
+          "pattern": "MaterialRequests({key}):?query:",
           "name": "MRApprovalDetail",
           "target": "MRApprovalDetail"
         },
@@ -467,7 +470,7 @@
               "contextPath": "/MaterialRequests",
               "variantManagement": "Page",
               "initialLoad": true,
-              "defaultTemplateAnnotationPath": "com.sap.vocabularies.UI.v1.SelectionVariant#PendingApproval",
+              "defaultTemplateAnnotationPath": "@com.sap.vocabularies.UI.v1.SelectionVariant#PendingApproval",
               "navigation": {
                 "MaterialRequests": {
                   "detail": { "route": "MRApprovalDetail" }
@@ -481,6 +484,10 @@
                     "enableExport": true,
                     "condensedTableLayout": false,
                     "personalization": { "column": true, "sort": true, "filter": true }
+                  },
+                  "actions": {
+                    "StandardAction::Create": { "visible": false },
+                    "StandardAction::Delete": { "visible": false }
                   }
                 }
               }
