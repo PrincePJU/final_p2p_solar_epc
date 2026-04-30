@@ -10,22 +10,37 @@ module.exports = class ProjectService extends cds.ApplicationService {
       ActiveProjects,
       SeniorActiveProjects,
       MaterialRequests,
+      ActiveProjects_MaterialRequests,
+      SeniorActiveProjects_MaterialRequests,
       MaterialRequestItems,
-      BOQItems
+      ActiveProjects_MaterialRequestItems,
+      SeniorActiveProjects_MaterialRequestItems,
+      BOQItems,
+      ActiveProjects_BOQItems,
+      SeniorActiveProjects_BOQItems
     } = this.entities;
 
     // ── AUTO-NUMBERING ────────────────────────────────────────────
-    this.before('CREATE', Projects,         this._generateProjectCode.bind(this));
-    this.before('CREATE', MaterialRequests, this._generateRequestNumber.bind(this));
+    this.before('CREATE', Projects,                              this._generateProjectCode.bind(this));
+    this.before('CREATE', MaterialRequests,                      this._generateRequestNumber.bind(this));
+    this.before('CREATE', ActiveProjects_MaterialRequests,       this._generateRequestNumber.bind(this));
+    this.before('CREATE', SeniorActiveProjects_MaterialRequests, this._generateRequestNumber.bind(this));
 
     // ── DERIVED FIELD CALCULATION ────────────────────────────────
-    this.before('CREATE', MaterialRequestItems, this._validateRequestItem.bind(this));
-    this.before('SAVE',   BOQItems,             this._calculateBOQValue.bind(this));
+    this.before('CREATE', MaterialRequestItems,                      this._validateRequestItem.bind(this));
+    this.before('CREATE', ActiveProjects_MaterialRequestItems,       this._validateRequestItem.bind(this));
+    this.before('CREATE', SeniorActiveProjects_MaterialRequestItems, this._validateRequestItem.bind(this));
+    this.before('SAVE',   BOQItems,                                  this._calculateBOQValue.bind(this));
+    this.before('SAVE',   ActiveProjects_BOQItems,                   this._calculateBOQValue.bind(this));
+    this.before('SAVE',   SeniorActiveProjects_BOQItems,             this._calculateBOQValue.bind(this));
 
     // ── BUSINESS GATING ──────────────────────────────────────────
-    this.before(['CREATE', 'UPDATE', 'DELETE'], BOQItems,         this._checkProjectActiveGate.bind(this));
-    this.before(['CREATE', 'UPDATE', 'DELETE'], MaterialRequests, this._checkProjectActiveGate.bind(this));
-    this.before('UPDATE', Projects,                               this._preventHeaderUpdateByEngineer.bind(this));
+    this.before(['CREATE', 'UPDATE', 'DELETE'], BOQItems,                              this._checkProjectActiveGate.bind(this));
+    this.before(['CREATE', 'UPDATE', 'DELETE'], ActiveProjects_BOQItems,               this._checkProjectActiveGate.bind(this));
+    this.before(['CREATE', 'UPDATE', 'DELETE'], MaterialRequests,                      this._checkProjectActiveGate.bind(this));
+    this.before(['CREATE', 'UPDATE', 'DELETE'], ActiveProjects_MaterialRequests,       this._checkProjectActiveGate.bind(this));
+    this.before(['CREATE', 'UPDATE', 'DELETE'], SeniorActiveProjects_MaterialRequests, this._checkProjectActiveGate.bind(this));
+    this.before('UPDATE', Projects,                                                    this._preventHeaderUpdateByEngineer.bind(this));
 
     // ── PROJECT ACTIONS ───────────────────────────────────────────
     this.on('activateProject',  Projects, this._activateProject.bind(this));
@@ -33,17 +48,22 @@ module.exports = class ProjectService extends cds.ApplicationService {
     this.on('completeProject',  Projects, this._completeProject.bind(this));
     this.on('cancelProject',    Projects, this._cancelProject.bind(this));
 
-    // ── MATERIAL REQUEST ACTIONS ──────────────────────────────────
-    this.on('submitRequest',  MaterialRequests, this._submitRequest.bind(this));
-    this.on('approveRequest', MaterialRequests, this._approveRequest.bind(this));
-    this.on('rejectRequest',  MaterialRequests, this._rejectRequest.bind(this));
-    this.on('closeRequest',   MaterialRequests, this._closeRequest.bind(this));
+    // ── MATERIAL REQUEST ACTIONS (all entity paths) ───────────────
+    const mrEntities = [MaterialRequests, ActiveProjects_MaterialRequests, SeniorActiveProjects_MaterialRequests];
+    for (const entity of mrEntities) {
+      this.on('submitRequest',  entity, this._submitRequest.bind(this));
+      this.on('approveRequest', entity, this._approveRequest.bind(this));
+      this.on('rejectRequest',  entity, this._rejectRequest.bind(this));
+      this.on('closeRequest',   entity, this._closeRequest.bind(this));
+    }
 
     // ── POST-READ ENRICHMENT ──────────────────────────────────────
     this.after('READ', Projects,             this._enrichProjects.bind(this));
     this.after('READ', ActiveProjects,       this._enrichProjects.bind(this));
     this.after('READ', SeniorActiveProjects, this._enrichProjects.bind(this));
     this.after('READ', MaterialRequests,     this._enrichRequests.bind(this));
+    this.after('READ', ActiveProjects_MaterialRequests,       this._enrichRequests.bind(this));
+    this.after('READ', SeniorActiveProjects_MaterialRequests, this._enrichRequests.bind(this));
 
     await super.init();
   }
@@ -85,6 +105,14 @@ module.exports = class ProjectService extends cds.ApplicationService {
     req.data.requestNumber = `MR-${year}-${String(seq).padStart(4, '0')}`;
     req.data.requestDate   = req.data.requestDate || new Date().toISOString().slice(0, 10);
     req.data.status        = 'DRAFT';
+    req.data.priority      = req.data.priority || 'MEDIUM';
+
+    // Auto-fill requestedBy from the logged-in user
+    if (!req.data.requestedBy_ID && req.user?.id) {
+      const { Users } = this.entities;
+      const user = await SELECT.one.from(Users).where({ userName: req.user.id });
+      if (user) req.data.requestedBy_ID = user.ID;
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -112,12 +140,14 @@ module.exports = class ProjectService extends cds.ApplicationService {
   }
 
   async _preventHeaderUpdateByEngineer(req) {
-    // Prevent engineers from modifying project header fields when creating BOQ/MRs in Draft mode
-    if (req.user && (req.user.is('ENGINEER') || req.user.is('Engineer'))) {
-      const updatedFields = Object.keys(req.data).filter(key => 
+    // Skip during draft activation — full entity payload is written back by CAP, not a real header edit
+    if (req.data.IsActiveEntity === true) return;
+
+    if (req.user && req.user.is('Engineer') && !req.user.is('BDM') && !req.user.is('Management')) {
+      const updatedFields = Object.keys(req.data).filter(key =>
         !['ID', 'IsActiveEntity', 'HasActiveEntity', 'HasDraftEntity', 'DraftAdministrativeData_DraftUUID', 'boqItems', 'materialRequests'].includes(key)
       );
-      
+
       if (updatedFields.length > 0) {
         return req.error(403, `Engineers are restricted to editing Bill of Quantities and Material Requests. Modifying project header details is not allowed.`);
       }
@@ -131,6 +161,18 @@ module.exports = class ProjectService extends cds.ApplicationService {
     }
     if (!item.material_ID) {
       req.error(400, 'Material is mandatory', 'material_ID');
+    }
+
+    // Auto-assign line number for new items
+    if (!item.lineNumber && item.request_ID) {
+      const existing = await SELECT.from(this.entities.MaterialRequestItems)
+        .where({ request_ID: item.request_ID });
+      item.lineNumber = (existing?.length || 0) + 1;
+    }
+
+    // Compute estimated value from rate × qty
+    if (item.estimatedRate && item.requestedQty) {
+      item.estimatedValue = parseFloat((item.estimatedRate * item.requestedQty).toFixed(2));
     }
     // Check BOQ availability if linked
     if (item.boqItem_ID) {
@@ -254,9 +296,10 @@ module.exports = class ProjectService extends cds.ApplicationService {
     }
     await UPDATE(this.entities.MaterialRequests)
       .set({
-        status      : 'APPROVED',
-        approvalDate: new Date().toISOString(),
-        remarks     : approvalRemarks || mr.remarks
+        status       : 'APPROVED',
+        approvalDate : new Date().toISOString(),
+        remarks      : approvalRemarks || mr.remarks,
+        approvedBy_ID: req.user?.id || null
       })
       .where({ ID });
     return SELECT.one.from(this.entities.MaterialRequests).where({ ID });
@@ -309,16 +352,24 @@ module.exports = class ProjectService extends cds.ApplicationService {
   // ═══════════════════════════════════════════════════════════════
 
   _enrichProjects(projects) {
+    if (!projects) return;
     const list = Array.isArray(projects) ? projects : [projects];
     for (const p of list) {
-      p.criticality = this._projectStatusCriticality(p.status);
+      // Safely apply criticality only when the object exists
+      if (p && typeof p === 'object') {
+        // Use 0 as default if status is missing to prevent drill-down errors in FE cache
+        p.criticality = p.status ? this._projectStatusCriticality(p.status) : 0;
+      }
     }
   }
 
   _enrichRequests(requests) {
+    if (!requests) return;
     const list = Array.isArray(requests) ? requests : [requests];
     for (const r of list) {
-      r.criticality = this._requestStatusCriticality(r.status);
+      if (r && typeof r === 'object') {
+        r.criticality = r.status ? this._requestStatusCriticality(r.status) : 0;
+      }
     }
   }
 

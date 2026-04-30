@@ -18,6 +18,7 @@
     "watch-projectmanagement": "cds watch --open solar.epc.projectmanagement/index.html?sap-ui-xx-viewCache=false --livereload false"
   },
   "cds": {
+    "fiori": { "bypass_draft": true },
     "requires": {
       "db": {
         "kind": "sqlite",

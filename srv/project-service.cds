@@ -44,38 +44,152 @@ service ProjectService @(path: '/project') {
   };
 
   // ── ACTIVE PROJECTS — Engineer view ──────────────────────────
-  // Route pattern "ActiveProjects:?query:" → FE binds /ActiveProjects
-  // Not @readonly so FE ObjectPage allows Create on child tables (BOQ, MR).
-  // Project header fields are annotated @Common.FieldControl: #ReadOnly.
-  @readonly
+  @odata.draft.enabled
   @restrict: [
-    { grant: ['READ'], to: ['Engineer','ProjectManager','Management','ProcurementOfficer','BDM'] }
+    { grant: ['READ'], to: ['Engineer','ProjectManager','Management','ProcurementOfficer','BDM'] },
+    { grant: ['UPDATE'], to: ['Engineer'] }
   ]
   entity ActiveProjects as projection on epc.Projects {
     *,
     projectManager   : redirected to Users,
-    boqItems         : redirected to BOQItems,
-    materialRequests : redirected to MaterialRequests,
+    boqItems         : redirected to ActiveProjects_BOQItems,
+    materialRequests : redirected to ActiveProjects_MaterialRequests,
     virtual criticality : Integer
   } where status = 'ACTIVE';
 
-  // ── SENIOR ACTIVE PROJECTS — Senior Engineer view ─────────────
-  // Separate entity so route pattern "SeniorActiveProjects:?query:"
-  // resolves cleanly — same data, distinct FE binding path.
-  @readonly
   @restrict: [
-    { grant: ['READ'], to: ['Engineer','ProjectManager','Management','ProcurementOfficer','BDM'] }
+    { grant: ['READ'],                    to: ['BDM','Engineer','ProjectManager','Management','ProcurementOfficer'] },
+    { grant: ['CREATE','UPDATE','DELETE'], to: ['Engineer','Management'] }
+  ]
+  entity ActiveProjects_BOQItems as projection on epc.BOQItems {
+    *,
+    project : redirected to ActiveProjects,
+    material : redirected to MaterialMaster
+  };
+
+  @restrict: [
+    { grant: ['READ'],                                          to: ['BDM','Engineer','ProjectManager','Management','ProcurementOfficer'] },
+    { grant: ['CREATE','UPDATE'],                               to: ['Engineer','Management'] },
+    { grant: ['submitRequest'],                                 to: ['Engineer','Management'] },
+    { grant: ['approveRequest','rejectRequest','closeRequest'],  to: ['ProjectManager','Management'] }
+  ]
+  entity ActiveProjects_MaterialRequests as projection on epc.MaterialRequests {
+    *,
+    project : redirected to ActiveProjects,
+    requestedBy : redirected to Users,
+    approvedBy  : redirected to Users,
+    items       : redirected to ActiveProjects_MaterialRequestItems,
+    quotations  : redirected to ActiveProjects_VendorQuotations,
+    virtual criticality : Integer
+  } actions {
+    action submitRequest()             returns ActiveProjects_MaterialRequests;
+    action approveRequest(approvalRemarks: String(500)) returns ActiveProjects_MaterialRequests;
+    action rejectRequest(rejectionReason: String(500)) returns ActiveProjects_MaterialRequests;
+    action closeRequest()              returns ActiveProjects_MaterialRequests;
+  };
+
+  @restrict: [
+    { grant: ['READ'],                    to: ['BDM','Engineer','ProjectManager','Management','ProcurementOfficer'] },
+    { grant: ['CREATE','UPDATE','DELETE'], to: ['Engineer','Management'] }
+  ]
+  entity ActiveProjects_MaterialRequestItems as projection on epc.MaterialRequestItems {
+    *,
+    request : redirected to ActiveProjects_MaterialRequests,
+    material : redirected to MaterialMaster,
+    boqItem : redirected to ActiveProjects_BOQItems
+  };
+
+  @readonly
+  entity ActiveProjects_VendorQuotations as projection on epc.VendorQuotations {
+    *,
+    materialRequest: redirected to ActiveProjects_MaterialRequests,
+    items: redirected to ActiveProjects_VendorQuotationItems
+  };
+
+  @readonly
+  @cds.redirection.target
+  entity ActiveProjects_VendorQuotationItems as projection on epc.VendorQuotationItems {
+    *,
+    quotation: redirected to ActiveProjects_VendorQuotations,
+    requestItem: redirected to ActiveProjects_MaterialRequestItems,
+    material: redirected to MaterialMaster
+  };
+
+  // ── SENIOR ACTIVE PROJECTS — Senior Engineer view ─────────────
+  @odata.draft.enabled
+  @restrict: [
+    { grant: ['READ'], to: ['Engineer','ProjectManager','Management','ProcurementOfficer','BDM'] },
+    { grant: ['UPDATE'], to: ['Engineer','ProjectManager'] }
   ]
   entity SeniorActiveProjects as projection on epc.Projects {
     *,
     projectManager   : redirected to Users,
-    boqItems         : redirected to BOQItems,
-    materialRequests : redirected to MaterialRequests,
+    boqItems         : redirected to SeniorActiveProjects_BOQItems,
+    materialRequests : redirected to SeniorActiveProjects_MaterialRequests,
     virtual criticality : Integer
   } where status = 'ACTIVE';
 
+  @restrict: [
+    { grant: ['READ'],                    to: ['BDM','Engineer','ProjectManager','Management','ProcurementOfficer'] },
+    { grant: ['CREATE','UPDATE','DELETE'], to: ['Engineer','Management'] }
+  ]
+  entity SeniorActiveProjects_BOQItems as projection on epc.BOQItems {
+    *,
+    project : redirected to SeniorActiveProjects,
+    material : redirected to MaterialMaster
+  };
+
+  @restrict: [
+    { grant: ['READ'],                                          to: ['BDM','Engineer','ProjectManager','Management','ProcurementOfficer'] },
+    { grant: ['CREATE','UPDATE'],                               to: ['Engineer','Management'] },
+    { grant: ['submitRequest'],                                 to: ['Engineer','Management'] },
+    { grant: ['approveRequest','rejectRequest','closeRequest'],  to: ['ProjectManager','Management'] }
+  ]
+  entity SeniorActiveProjects_MaterialRequests as projection on epc.MaterialRequests {
+    *,
+    project : redirected to SeniorActiveProjects,
+    requestedBy : redirected to Users,
+    approvedBy  : redirected to Users,
+    items       : redirected to SeniorActiveProjects_MaterialRequestItems,
+    quotations  : redirected to SeniorActiveProjects_VendorQuotations,
+    virtual criticality : Integer
+  } actions {
+    action submitRequest()             returns SeniorActiveProjects_MaterialRequests;
+    action approveRequest(approvalRemarks: String(500)) returns SeniorActiveProjects_MaterialRequests;
+    action rejectRequest(rejectionReason: String(500)) returns SeniorActiveProjects_MaterialRequests;
+    action closeRequest()              returns SeniorActiveProjects_MaterialRequests;
+  };
+  
+  @restrict: [
+    { grant: ['READ'],                    to: ['BDM','Engineer','ProjectManager','Management','ProcurementOfficer'] },
+    { grant: ['CREATE','UPDATE','DELETE'], to: ['Engineer','Management'] }
+  ]
+  entity SeniorActiveProjects_MaterialRequestItems as projection on epc.MaterialRequestItems {
+    *,
+    request : redirected to SeniorActiveProjects_MaterialRequests,
+    material : redirected to MaterialMaster,
+    boqItem : redirected to SeniorActiveProjects_BOQItems
+  };
+
+  @readonly
+  entity SeniorActiveProjects_VendorQuotations as projection on epc.VendorQuotations {
+    *,
+    materialRequest: redirected to SeniorActiveProjects_MaterialRequests,
+    items: redirected to SeniorActiveProjects_VendorQuotationItems
+  };
+
+  @readonly
+  @cds.redirection.target
+  entity SeniorActiveProjects_VendorQuotationItems as projection on epc.VendorQuotationItems {
+    *,
+    quotation: redirected to SeniorActiveProjects_VendorQuotations,
+    requestItem: redirected to SeniorActiveProjects_MaterialRequestItems,
+    material: redirected to MaterialMaster
+  };
+
   // ── BOQ ITEMS ─────────────────────────────────────────────────
   // Junior Engineers define BOQ. Senior Engineers and BDM are read-only here.
+  @cds.redirection.target
   @restrict: [
     { grant: ['READ'],                    to: ['BDM','Engineer','ProjectManager','Management','ProcurementOfficer'] },
     { grant: ['CREATE','UPDATE','DELETE'], to: ['Engineer','Management'] }
@@ -89,6 +203,7 @@ service ProjectService @(path: '/project') {
   // ── MATERIAL REQUESTS ─────────────────────────────────────────
   // Junior Engineers create, fill items, and submit.
   // Senior Engineers (ProjectManager) can only approve or reject — no creation.
+  @cds.redirection.target
   @restrict: [
     { grant: ['READ'],                                          to: ['BDM','Engineer','ProjectManager','Management','ProcurementOfficer'] },
     { grant: ['CREATE','UPDATE'],                               to: ['Engineer','Management'] },
@@ -101,7 +216,8 @@ service ProjectService @(path: '/project') {
     requestedBy         : redirected to Users,
     approvedBy          : redirected to Users,
     items               : redirected to MaterialRequestItems,
-    quotations          : redirected to VendorQuotations
+    quotations          : redirected to VendorQuotations,
+    virtual criticality : Integer
   } actions {
     action submitRequest()             returns MaterialRequests;
     action approveRequest(approvalRemarks: String(500)) returns MaterialRequests;
@@ -109,6 +225,7 @@ service ProjectService @(path: '/project') {
     action closeRequest()              returns MaterialRequests;
   };
 
+  @cds.redirection.target
   entity MaterialRequestItems as projection on epc.MaterialRequestItems {
     *,
     request  : redirected to MaterialRequests,
@@ -118,7 +235,20 @@ service ProjectService @(path: '/project') {
 
   // ── VENDOR QUOTATIONS (read-only from project context) ────────
   @readonly
-  entity VendorQuotations as projection on epc.VendorQuotations;
+  entity VendorQuotations as projection on epc.VendorQuotations {
+    *,
+    materialRequest: redirected to MaterialRequests,
+    items: redirected to VendorQuotationItems
+  };
+
+  @readonly
+  @cds.redirection.target
+  entity VendorQuotationItems as projection on epc.VendorQuotationItems {
+    *,
+    quotation: redirected to VendorQuotations,
+    requestItem: redirected to MaterialRequestItems,
+    material: redirected to MaterialMaster
+  };
 }
 
 // UI annotations are maintained in app/projectmanagement/annotations.cds

@@ -99,8 +99,32 @@ sap.ui.define([
         },
 
         onTodoPress: function (oEvent) {
-            const oCtx   = oEvent.getSource().getBindingContext("view");
-            const sTask  = oCtx.getProperty("task");
+            const oCtx    = oEvent.getSource().getBindingContext("view");
+            const sRole   = oCtx.getProperty("role") || "";
+            const oRouter = this.getOwnerComponent().getRouter();
+            const sCurrentRole = this.getView().getModel("view").getProperty("/currentRole");
+
+            // Route todo items to the relevant functional screen
+            if (sRole.includes("Senior") || sCurrentRole === "PROJECT_MANAGER") {
+                if (sRole.includes("Senior") || sRole.includes("Executive")) {
+                    oRouter.navTo("MRApprovalDashboard");
+                    return;
+                }
+            }
+            if (sCurrentRole === "ENGINEER") {
+                oRouter.navTo("EngineeringProjectsList");
+                return;
+            }
+            if (sCurrentRole === "BDM") {
+                oRouter.navTo("ProjectsList");
+                return;
+            }
+            if (sCurrentRole === "PROCUREMENT_OFFICER") {
+                oRouter.navTo("VendorList");
+                return;
+            }
+            // fallback
+            const sTask = oCtx.getProperty("task");
             MessageToast.show("Opening: " + sTask);
         },
 
@@ -154,8 +178,7 @@ sap.ui.define([
             }
 
             if (sAppKey === "approveMR") {
-                // Senior Engineer: navigate to their project list where Approve/Reject actions are visible
-                oRouter.navTo("SeniorProjectsList");
+                oRouter.navTo("MRApprovalDashboard");
                 return;
             }
 

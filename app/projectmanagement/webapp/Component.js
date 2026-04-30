@@ -13,17 +13,22 @@ sap.ui.define([
         init: function () {
             AppComponent.prototype.init.apply(this, arguments);
 
+            // Restore session from sessionStorage to survive page reloads
+            const sStoredRole = sessionStorage.getItem("currentRole") || RoleService.ROLES.MANAGEMENT;
+            const bLoggedIn   = sessionStorage.getItem("loggedIn") === "true";
+
             // Session model is the single source of truth for the active role.
             // In production this would be populated from the XSUAA JWT token.
             const oSessionModel = new JSONModel({
-                currentRole:     RoleService.ROLES.MANAGEMENT,
-                userName:        "",
-                loggedIn:        false,
+                currentRole:     sStoredRole,
+                userName:        sessionStorage.getItem("userName") || "",
+                loggedIn:        bLoggedIn,
                 unauthorized:    false,
                 lastDeniedRoute: ""
             });
             this.setModel(oSessionModel, "session");
 
+            // Attach a listener to save session state whenever it changes
             // Route guard — fires before any route target is displayed
             this.getRouter().attachBeforeRouteMatched(this._onBeforeRouteMatched, this);
         },

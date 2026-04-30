@@ -154,6 +154,26 @@
           "pattern": "CompareQuotations",
           "name": "QuotationComparison",
           "target": "QuotationComparison"
+        },
+        {
+          "pattern": "MRApproval:?query:",
+          "name": "MRApprovalDashboard",
+          "target": "MRApprovalDashboard"
+        },
+        {
+          "pattern": "MRApproval({key}):?query:",
+          "name": "MRApprovalDetail",
+          "target": "MRApprovalDetail"
+        },
+        {
+          "pattern": "ActiveProjects({key})/materialRequests({mrKey}):?query:",
+          "name": "EngineerMRObjectPage",
+          "target": "EngineerMRObjectPage"
+        },
+        {
+          "pattern": "SeniorActiveProjects({key})/materialRequests({mrKey}):?query:",
+          "name": "SeniorMRObjectPage",
+          "target": "SeniorMRObjectPage"
         }
       ],
       "targets": {
@@ -262,6 +282,11 @@
             "settings": {
               "editableHeaderContent": false,
               "contextPath": "/ActiveProjects",
+              "navigation": {
+                "materialRequests": {
+                  "detail": { "route": "EngineerMRObjectPage" }
+                }
+              },
               "controlConfiguration": {
                 "@com.sap.vocabularies.UI.v1.Identification": {
                   "actions": {
@@ -273,7 +298,10 @@
                 },
                 "boqItems/@com.sap.vocabularies.UI.v1.LineItem": {
                   "tableSettings": {
-                    "type": "GridTable",
+                    "type": "ResponsiveTable",
+                    "creationMode": {
+                      "name": "Inline"
+                    },
                     "selectionMode": "Multi",
                     "enableExport": true,
                     "condensedTableLayout": false,
@@ -335,6 +363,11 @@
             "settings": {
               "editableHeaderContent": false,
               "contextPath": "/SeniorActiveProjects",
+              "navigation": {
+                "materialRequests": {
+                  "detail": { "route": "SeniorMRObjectPage" }
+                }
+              },
               "controlConfiguration": {
                 "@com.sap.vocabularies.UI.v1.Identification": {
                   "actions": {
@@ -419,6 +452,115 @@
                   "actions": {
                     "DataFieldForAction::VendorService.deactivateVendor": { "visible": true },
                     "DataFieldForAction::VendorService.activateVendor":   { "visible": true }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "MRApprovalDashboard": {
+          "type": "Component",
+          "id": "MRApprovalDashboard",
+          "name": "sap.fe.templates.ListReport",
+          "options": {
+            "settings": {
+              "contextPath": "/MaterialRequests",
+              "variantManagement": "Page",
+              "initialLoad": true,
+              "defaultTemplateAnnotationPath": "com.sap.vocabularies.UI.v1.SelectionVariant#PendingApproval",
+              "navigation": {
+                "MaterialRequests": {
+                  "detail": { "route": "MRApprovalDetail" }
+                }
+              },
+              "controlConfiguration": {
+                "@com.sap.vocabularies.UI.v1.LineItem": {
+                  "tableSettings": {
+                    "type": "ResponsiveTable",
+                    "selectionMode": "Multi",
+                    "enableExport": true,
+                    "condensedTableLayout": false,
+                    "personalization": { "column": true, "sort": true, "filter": true }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "MRApprovalDetail": {
+          "type": "Component",
+          "id": "MRApprovalDetail",
+          "name": "sap.fe.templates.ObjectPage",
+          "options": {
+            "settings": {
+              "contextPath": "/MaterialRequests",
+              "editableHeaderContent": false,
+              "sectionLayout": "Tabs",
+              "controlConfiguration": {
+                "@com.sap.vocabularies.UI.v1.Identification": {
+                  "actions": {
+                    "DataFieldForAction::ProjectService.submitRequest": { "visible": false },
+                    "DataFieldForAction::ProjectService.closeRequest":  { "visible": false }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "EngineerMRObjectPage": {
+          "type": "Component",
+          "id": "EngineerMRObjectPage",
+          "name": "sap.fe.templates.ObjectPage",
+          "options": {
+            "settings": {
+              "contextPath": "/ActiveProjects/materialRequests",
+              "editableHeaderContent": false,
+              "sectionLayout": "Tabs",
+              "controlConfiguration": {
+                "@com.sap.vocabularies.UI.v1.Identification": {
+                  "actions": {
+                    "DataFieldForAction::ProjectService.approveRequest": { "visible": false },
+                    "DataFieldForAction::ProjectService.rejectRequest":  { "visible": false },
+                    "DataFieldForAction::ProjectService.closeRequest":   { "visible": false }
+                  }
+                },
+                "items/@com.sap.vocabularies.UI.v1.LineItem": {
+                  "tableSettings": {
+                    "type": "ResponsiveTable",
+                    "creationMode": { "name": "Inline" },
+                    "selectionMode": "Multi",
+                    "enableExport": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "SeniorMRObjectPage": {
+          "type": "Component",
+          "id": "SeniorMRObjectPage",
+          "name": "sap.fe.templates.ObjectPage",
+          "options": {
+            "settings": {
+              "contextPath": "/SeniorActiveProjects/materialRequests",
+              "editableHeaderContent": false,
+              "sectionLayout": "Tabs",
+              "controlConfiguration": {
+                "@com.sap.vocabularies.UI.v1.Identification": {
+                  "actions": {
+                    "DataFieldForAction::ProjectService.submitRequest": { "visible": false },
+                    "DataFieldForAction::ProjectService.closeRequest":  { "visible": false }
+                  }
+                },
+                "items/@com.sap.vocabularies.UI.v1.LineItem": {
+                  "tableSettings": {
+                    "type": "ResponsiveTable",
+                    "selectionMode": "None",
+                    "enableExport": true
+                  },
+                  "actions": {
+                    "StandardAction::Create": { "visible": false },
+                    "StandardAction::Delete": { "visible": false }
                   }
                 }
               }

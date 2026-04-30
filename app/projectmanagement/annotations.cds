@@ -269,6 +269,10 @@ annotate service.Projects with {
 // Same columns as Projects but bound to the ActiveProjects entity.
 annotate service.ActiveProjects with @(
 
+  Capabilities: {
+    UpdateRestrictions: { Updatable: true }
+  },
+
   UI.SelectionFields: [ state, projectManager_ID, startDate, endDate ],
 
   UI.LineItem: [
@@ -441,6 +445,17 @@ annotate service.ActiveProjects with {
   startDate      @Common.FieldControl: #ReadOnly;
   endDate        @Common.FieldControl: #ReadOnly;
   currency       @Common.FieldControl: #ReadOnly;
+  
+  boqItems @(
+    Capabilities.InsertRestrictions: { Insertable: true },
+    Capabilities.DeleteRestrictions: { Deletable: true },
+    Capabilities.UpdateRestrictions: { Updatable: true }
+  );
+  materialRequests @(
+    Capabilities.InsertRestrictions: { Insertable: true },
+    Capabilities.DeleteRestrictions: { Deletable: true },
+    Capabilities.UpdateRestrictions: { Updatable: true }
+  );
   budget         @Common.FieldControl: #ReadOnly;
   spentAmount    @Common.FieldControl: #ReadOnly;
 }
@@ -460,6 +475,12 @@ annotate service.SeniorActiveProjects with {
   currency       @Common.FieldControl: #ReadOnly;
   budget         @Common.FieldControl: #ReadOnly;
   spentAmount    @Common.FieldControl: #ReadOnly;
+
+  materialRequests @(
+    Capabilities.InsertRestrictions: { Insertable: false },
+    Capabilities.DeleteRestrictions: { Deletable: false },
+    Capabilities.UpdateRestrictions: { Updatable: true }
+  );
 }
 
 // ── STATUS DROPDOWN VALUE LIST ────────────────────────────────
@@ -498,6 +519,46 @@ annotate service.BOQItems with @(
   ]
 );
 
+annotate service.ActiveProjects_BOQItems with @(
+  UI.LineItem: [
+    { $Type: 'UI.DataField', Value: lineNumber,    Label: '#'                },
+    {
+      $Type : 'UI.DataField',
+      Value : material_ID,
+      Label : 'Material',
+      ![@UI.Importance]: #High
+    },
+    { $Type: 'UI.DataField', Value: description,   Label: 'Description'      },
+    { $Type: 'UI.DataField', Value: uom,           Label: 'UOM'              },
+    { $Type: 'UI.DataField', Value: plannedQty,    Label: 'Planned Qty'      },
+    { $Type: 'UI.DataField', Value: estimatedRate, Label: 'Est. Rate (INR)'  },
+    { $Type: 'UI.DataField', Value: estimatedValue,Label: 'Est. Value (INR)' },
+    { $Type: 'UI.DataField', Value: requestedQty,  Label: 'Requested'        },
+    { $Type: 'UI.DataField', Value: orderedQty,    Label: 'Ordered'          },
+    { $Type: 'UI.DataField', Value: receivedQty,   Label: 'Received'         }
+  ]
+);
+
+annotate service.SeniorActiveProjects_BOQItems with @(
+  UI.LineItem: [
+    { $Type: 'UI.DataField', Value: lineNumber,    Label: '#'                },
+    {
+      $Type : 'UI.DataField',
+      Value : material_ID,
+      Label : 'Material',
+      ![@UI.Importance]: #High
+    },
+    { $Type: 'UI.DataField', Value: description,   Label: 'Description'      },
+    { $Type: 'UI.DataField', Value: uom,           Label: 'UOM'              },
+    { $Type: 'UI.DataField', Value: plannedQty,    Label: 'Planned Qty'      },
+    { $Type: 'UI.DataField', Value: estimatedRate, Label: 'Est. Rate (INR)'  },
+    { $Type: 'UI.DataField', Value: estimatedValue,Label: 'Est. Value (INR)' },
+    { $Type: 'UI.DataField', Value: requestedQty,  Label: 'Requested'        },
+    { $Type: 'UI.DataField', Value: orderedQty,    Label: 'Ordered'          },
+    { $Type: 'UI.DataField', Value: receivedQty,   Label: 'Received'         }
+  ]
+);
+
 annotate service.BOQItems with {
   material @title: 'Material'
     @Common.Text           : material.description
@@ -505,7 +566,49 @@ annotate service.BOQItems with {
     @Common.ValueList: {
       CollectionPath: 'MaterialMaster',
       Parameters: [
-        { $Type: 'Common.ValueListParameterOut',         LocalDataProperty: material_ID,  ValueListProperty: 'ID'          },
+        { $Type: 'Common.ValueListParameterInOut',       LocalDataProperty: material_ID,  ValueListProperty: 'ID'          },
+        { $Type: 'Common.ValueListParameterDisplayOnly', ValueListProperty: 'materialCode'                                  },
+        { $Type: 'Common.ValueListParameterDisplayOnly', ValueListProperty: 'description'                                   },
+        { $Type: 'Common.ValueListParameterDisplayOnly', ValueListProperty: 'uom'                                           }
+      ]
+    };
+  plannedQty    @title: 'Planned Qty';
+  estimatedRate @title: 'Estimated Rate';
+  estimatedValue @title: 'Estimated Value' @Common.FieldControl: #ReadOnly;
+  requestedQty  @title: 'Requested Qty'   @Common.FieldControl: #ReadOnly;
+  orderedQty    @title: 'Ordered Qty'     @Common.FieldControl: #ReadOnly;
+  receivedQty   @title: 'Received Qty'    @Common.FieldControl: #ReadOnly;
+}
+
+annotate service.ActiveProjects_BOQItems with {
+  material @title: 'Material'
+    @Common.Text           : material.description
+    @Common.TextArrangement: #TextFirst
+    @Common.ValueList: {
+      CollectionPath: 'MaterialMaster',
+      Parameters: [
+        { $Type: 'Common.ValueListParameterInOut',       LocalDataProperty: material_ID,  ValueListProperty: 'ID'          },
+        { $Type: 'Common.ValueListParameterDisplayOnly', ValueListProperty: 'materialCode'                                  },
+        { $Type: 'Common.ValueListParameterDisplayOnly', ValueListProperty: 'description'                                   },
+        { $Type: 'Common.ValueListParameterDisplayOnly', ValueListProperty: 'uom'                                           }
+      ]
+    };
+  plannedQty    @title: 'Planned Qty';
+  estimatedRate @title: 'Estimated Rate';
+  estimatedValue @title: 'Estimated Value' @Common.FieldControl: #ReadOnly;
+  requestedQty  @title: 'Requested Qty'   @Common.FieldControl: #ReadOnly;
+  orderedQty    @title: 'Ordered Qty'     @Common.FieldControl: #ReadOnly;
+  receivedQty   @title: 'Received Qty'    @Common.FieldControl: #ReadOnly;
+}
+
+annotate service.SeniorActiveProjects_BOQItems with {
+  material @title: 'Material'
+    @Common.Text           : material.description
+    @Common.TextArrangement: #TextFirst
+    @Common.ValueList: {
+      CollectionPath: 'MaterialMaster',
+      Parameters: [
+        { $Type: 'Common.ValueListParameterInOut',       LocalDataProperty: material_ID,  ValueListProperty: 'ID'          },
         { $Type: 'Common.ValueListParameterDisplayOnly', ValueListProperty: 'materialCode'                                  },
         { $Type: 'Common.ValueListParameterDisplayOnly', ValueListProperty: 'description'                                   },
         { $Type: 'Common.ValueListParameterDisplayOnly', ValueListProperty: 'uom'                                           }
@@ -524,6 +627,133 @@ annotate service.BOQItems with {
 // ═══════════════════════════════════════════════════════════════
 
 annotate service.MaterialRequests with @(
+
+  UI.SelectionFields: [ status, project_ID, requestedBy_ID ],
+
+  UI.SelectionVariant#PendingApproval: {
+    Text          : 'Pending Approval',
+    SelectOptions : [{
+      PropertyName : status,
+      Ranges       : [{ Sign: #I, Option: #EQ, Low: 'SUBMITTED' }]
+    }]
+  },
+
+  UI.LineItem: [
+    { $Type: 'UI.DataField', Value: requestNumber, Label: 'Request No.',  ![@UI.Importance]: #High   },
+    { $Type: 'UI.DataField', Value: project_ID,    Label: 'Project',      ![@UI.Importance]: #High   },
+    { $Type: 'UI.DataField', Value: requestDate,   Label: 'Raised On',    ![@UI.Importance]: #Medium },
+    { $Type: 'UI.DataField', Value: requiredDate,  Label: 'Required By',  ![@UI.Importance]: #High   },
+    { $Type: 'UI.DataField', Value: requestedBy_ID,Label: 'Raised By',    ![@UI.Importance]: #Medium },
+    {
+      $Type            : 'UI.DataFieldWithCriticality',
+      Value            : status,
+      Criticality      : criticality,
+      Label            : 'Status',
+      ![@UI.Importance]: #High
+    },
+    { $Type: 'UI.DataField', Value: remarks,        Label: 'Remarks',     ![@UI.Importance]: #Low    },
+    {
+      $Type  : 'UI.DataFieldForAction',
+      Action : 'ProjectService.approveRequest',
+      Label  : 'Approve',
+      ![@UI.Importance]: #High
+    },
+    {
+      $Type  : 'UI.DataFieldForAction',
+      Action : 'ProjectService.rejectRequest',
+      Label  : 'Reject',
+      ![@UI.Importance]: #High
+    }
+  ],
+
+  UI.Identification: [
+    {
+      $Type  : 'UI.DataFieldForAction',
+      Action : 'ProjectService.approveRequest',
+      Label  : 'Approve',
+      Criticality: #Positive
+    },
+    {
+      $Type  : 'UI.DataFieldForAction',
+      Action : 'ProjectService.rejectRequest',
+      Label  : 'Reject',
+      Criticality: #Negative
+    },
+    {
+      $Type  : 'UI.DataFieldForAction',
+      Action : 'ProjectService.submitRequest',
+      Label  : 'Submit for Approval'
+    }
+  ],
+
+  UI.HeaderInfo: {
+    TypeName      : 'Material Request',
+    TypeNamePlural: 'Material Requests',
+    Title         : { $Type: 'UI.DataField', Value: requestNumber },
+    Description   : { $Type: 'UI.DataField', Value: project_ID   }
+  },
+
+  UI.DataPoint#MRStatus: {
+    Value       : status,
+    Title       : 'Status',
+    Criticality : criticality
+  },
+
+  UI.DataPoint#RequiredBy: {
+    Value : requiredDate,
+    Title : 'Required By'
+  },
+
+  UI.HeaderFacets: [
+    { $Type: 'UI.ReferenceFacet', Target: '@UI.DataPoint#MRStatus',   Label: 'Status'      },
+    { $Type: 'UI.ReferenceFacet', Target: '@UI.DataPoint#RequiredBy', Label: 'Required By' }
+  ],
+
+  UI.Facets: [
+    {
+      $Type : 'UI.CollectionFacet',
+      ID    : 'MRGeneralInfo',
+      Label : 'Request Details',
+      Facets: [
+        { $Type: 'UI.ReferenceFacet', Target: '@UI.FieldGroup#MRRequestInfo', Label: 'Request Info'   },
+        { $Type: 'UI.ReferenceFacet', Target: '@UI.FieldGroup#MRApprovalInfo', Label: 'Approval Info' }
+      ]
+    },
+    {
+      $Type  : 'UI.ReferenceFacet',
+      ID     : 'MRItemsSection',
+      Target : 'items/@UI.LineItem',
+      Label  : 'Requested Materials'
+    }
+  ],
+
+  UI.FieldGroup#MRRequestInfo: {
+    Label: 'Request Information',
+    Data : [
+      { $Type: 'UI.DataField', Value: requestNumber,  Label: 'Request No.'            },
+      { $Type: 'UI.DataField', Value: project_ID,     Label: 'Project'                },
+      { $Type: 'UI.DataField', Value: requestDate,    Label: 'Request Date'           },
+      { $Type: 'UI.DataField', Value: requiredDate,   Label: 'Required By'            },
+      { $Type: 'UI.DataField', Value: priority,       Label: 'Priority'               },
+      { $Type: 'UI.DataField', Value: requestedBy_ID, Label: 'Raised By'              },
+      { $Type: 'UI.DataField', Value: siteLocation,   Label: 'Site / Work Area'       },
+      { $Type: 'UI.DataField', Value: purpose,        Label: 'Purpose / Justification'},
+      { $Type: 'UI.DataField', Value: remarks,        Label: 'Remarks'                }
+    ]
+  },
+
+  UI.FieldGroup#MRApprovalInfo: {
+    Label: 'Approval Details',
+    Data : [
+      { $Type: 'UI.DataField', Value: status,           Label: 'Status'            },
+      { $Type: 'UI.DataField', Value: approvedBy_ID,    Label: 'Approved / Rejected By' },
+      { $Type: 'UI.DataField', Value: approvalDate,     Label: 'Approval Date'     },
+      { $Type: 'UI.DataField', Value: rejectionReason,  Label: 'Rejection Reason'  }
+    ]
+  }
+);
+
+annotate service.ActiveProjects_MaterialRequests with @(
   UI.LineItem: [
     { $Type: 'UI.DataField', Value: requestNumber, Label: 'Request No.',  ![@UI.Importance]: #High  },
     { $Type: 'UI.DataField', Value: requestDate,   Label: 'Raised On',   ![@UI.Importance]: #Medium },
@@ -543,33 +773,265 @@ annotate service.MaterialRequests with @(
       $Type  : 'UI.DataFieldForAction',
       Action : 'ProjectService.submitRequest',
       Label  : 'Submit'
-    },
-    {
-      $Type  : 'UI.DataFieldForAction',
-      Action : 'ProjectService.approveRequest',
-      Label  : 'Approve'
-    },
-    {
-      $Type  : 'UI.DataFieldForAction',
-      Action : 'ProjectService.rejectRequest',
-      Label  : 'Reject'
     }
-  ]
+  ],
+
+  Capabilities.UpdateRestrictions: { Updatable: true }
+);
+
+annotate service.SeniorActiveProjects_MaterialRequests with @(
+  UI.LineItem: [
+    { $Type: 'UI.DataField', Value: requestNumber, Label: 'Request No.',  ![@UI.Importance]: #High  },
+    { $Type: 'UI.DataField', Value: requestDate,   Label: 'Raised On',   ![@UI.Importance]: #Medium },
+    { $Type: 'UI.DataField', Value: requiredDate,  Label: 'Required By', ![@UI.Importance]: #High   },
+    { $Type: 'UI.DataField', Value: requestedBy_ID,Label: 'Raised By',   ![@UI.Importance]: #Medium },
+    {
+      $Type            : 'UI.DataField',
+      Value            : status,
+      Label            : 'Status',
+      ![@UI.Importance]: #High
+    },
+    { $Type: 'UI.DataField', Value: remarks,        Label: 'Remarks',    ![@UI.Importance]: #Low    }
+  ],
+
+  UI.Identification: [
+    {
+      $Type       : 'UI.DataFieldForAction',
+      Action      : 'ProjectService.approveRequest',
+      Label       : 'Approve',
+      Criticality : #Positive
+    },
+    {
+      $Type       : 'UI.DataFieldForAction',
+      Action      : 'ProjectService.rejectRequest',
+      Label       : 'Reject',
+      Criticality : #Negative
+    }
+  ],
+
+  Capabilities.UpdateRestrictions: { Updatable: true }
 );
 
 annotate service.MaterialRequests with {
-  requestNumber  @title: 'Request Number'   @Common.FieldControl: #ReadOnly;
-  requestDate    @title: 'Request Date';
-  requiredDate   @title: 'Required By'      @mandatory;
-  status         @title: 'Status'           @Common.FieldControl: #ReadOnly;
-  remarks        @title: 'Remarks'          @UI.MultiLineText: true;
+  requestNumber  @title: 'Request Number'           @Common.FieldControl: #ReadOnly;
+  requestDate    @title: 'Request Date'             @Common.FieldControl: #ReadOnly;
+  requiredDate   @title: 'Required By'              @mandatory;
+  priority       @title: 'Priority'
+    @Common.ValueListWithFixedValues: true
+    @Common.ValueList: {
+      CollectionPath: 'MaterialRequests',
+      Parameters: [
+        { $Type: 'Common.ValueListParameterOut', LocalDataProperty: priority, ValueListProperty: 'priority' }
+      ]
+    };
+  purpose        @title: 'Purpose / Justification'  @UI.MultiLineText: true;
+  siteLocation   @title: 'Site / Work Area';
+  status         @title: 'Status'                   @Common.FieldControl: #ReadOnly;
+  remarks        @title: 'Remarks'                  @UI.MultiLineText: true;
+  approvalDate   @title: 'Approval Date'            @Common.FieldControl: #ReadOnly;
+  rejectionReason @title: 'Rejection Reason'        @UI.MultiLineText: true  @Common.FieldControl: #ReadOnly;
+  requestedBy    @title: 'Requested By'             @Common.FieldControl: #ReadOnly;
+  project @title: 'Project'
+    @Common.Text           : project.projectName
+    @Common.TextArrangement: #TextOnly
+    @Common.ValueList: {
+      CollectionPath : 'Projects',
+      Parameters     : [
+        { $Type: 'Common.ValueListParameterOut',         LocalDataProperty: project_ID, ValueListProperty: 'ID'          },
+        { $Type: 'Common.ValueListParameterDisplayOnly', ValueListProperty: 'projectName'                                 },
+        { $Type: 'Common.ValueListParameterDisplayOnly', ValueListProperty: 'projectCode'                                 }
+      ]
+    };
   requestedBy    @title: 'Requested By'
     @Common.Text           : requestedBy.userName
     @Common.TextArrangement: #TextOnly;
-  approvedBy     @title: 'Approved By'
+  approvedBy     @title: 'Approved / Rejected By'
     @Common.Text           : approvedBy.userName
     @Common.TextArrangement: #TextOnly;
 }
+
+annotate service.ActiveProjects_MaterialRequests with {
+  requestNumber   @title: 'Request Number'    @Common.FieldControl: #ReadOnly;
+  requestDate     @title: 'Request Date'      @Common.FieldControl: #ReadOnly;
+  requiredDate    @title: 'Required By'       @mandatory;
+  priority        @title: 'Priority'
+    @Common.ValueListWithFixedValues: true
+    @Common.ValueList: {
+      CollectionPath: 'ActiveProjects_MaterialRequests',
+      Parameters: [
+        { $Type: 'Common.ValueListParameterOut', LocalDataProperty: priority, ValueListProperty: 'priority' }
+      ]
+    };
+  purpose         @title: 'Purpose / Justification'  @UI.MultiLineText: true;
+  siteLocation    @title: 'Site / Work Area';
+  status          @title: 'Status'            @Common.FieldControl: #ReadOnly;
+  remarks         @title: 'Remarks'           @UI.MultiLineText: true;
+  approvalDate    @title: 'Approval Date'     @Common.FieldControl: #ReadOnly;
+  rejectionReason @title: 'Rejection Reason'  @Common.FieldControl: #ReadOnly  @UI.MultiLineText: true;
+  requestedBy @title: 'Requested By'
+    @Common.FieldControl: #ReadOnly
+    @Common.Text           : requestedBy.userName
+    @Common.TextArrangement: #TextOnly;
+  approvedBy  @title: 'Reviewed By'
+    @Common.FieldControl: #ReadOnly
+    @Common.Text           : approvedBy.userName
+    @Common.TextArrangement: #TextOnly;
+}
+
+annotate service.ActiveProjects_MaterialRequests with @(
+  UI.HeaderInfo: {
+    TypeName      : 'Material Request',
+    TypeNamePlural: 'Material Requests',
+    Title         : { $Type: 'UI.DataField', Value: requestNumber },
+    Description   : { $Type: 'UI.DataField', Value: status        }
+  },
+
+  UI.DataPoint#APMRStatus: {
+    Value       : status,
+    Title       : 'Status',
+    Criticality : criticality
+  },
+
+  UI.DataPoint#APMRRequired: {
+    Value : requiredDate,
+    Title : 'Required By'
+  },
+
+  UI.HeaderFacets: [
+    { $Type: 'UI.ReferenceFacet', Target: '@UI.DataPoint#APMRStatus',   Label: 'Status'      },
+    { $Type: 'UI.ReferenceFacet', Target: '@UI.DataPoint#APMRRequired', Label: 'Required By' }
+  ],
+
+  UI.Facets: [
+    {
+      $Type : 'UI.CollectionFacet',
+      ID    : 'APMRGeneralInfo',
+      Label : 'Request Details',
+      Facets: [
+        { $Type: 'UI.ReferenceFacet', Target: '@UI.FieldGroup#APMRRequestInfo', Label: 'Request Info'   },
+        { $Type: 'UI.ReferenceFacet', Target: '@UI.FieldGroup#APMRApproval',    Label: 'Approval Info'  }
+      ]
+    },
+    {
+      $Type  : 'UI.ReferenceFacet',
+      ID     : 'APMRItemsSection',
+      Target : 'items/@UI.LineItem',
+      Label  : 'Requested Materials'
+    }
+  ],
+
+  UI.FieldGroup#APMRRequestInfo: {
+    Label: 'Request Information',
+    Data : [
+      { $Type: 'UI.DataField', Value: requestNumber,  Label: 'Request No.'           },
+      { $Type: 'UI.DataField', Value: requestDate,    Label: 'Raised On'             },
+      { $Type: 'UI.DataField', Value: requiredDate,   Label: 'Required By'           },
+      { $Type: 'UI.DataField', Value: priority,       Label: 'Priority'              },
+      { $Type: 'UI.DataField', Value: requestedBy_ID, Label: 'Raised By'             },
+      { $Type: 'UI.DataField', Value: siteLocation,   Label: 'Site / Work Area'      },
+      { $Type: 'UI.DataField', Value: purpose,        Label: 'Purpose / Justification'},
+      { $Type: 'UI.DataField', Value: remarks,        Label: 'Remarks'               }
+    ]
+  },
+
+  UI.FieldGroup#APMRApproval: {
+    Label: 'Approval Details',
+    Data : [
+      { $Type: 'UI.DataField', Value: status,           Label: 'Status'           },
+      { $Type: 'UI.DataField', Value: approvedBy_ID,    Label: 'Reviewed By'      },
+      { $Type: 'UI.DataField', Value: approvalDate,     Label: 'Approval Date'    },
+      { $Type: 'UI.DataField', Value: rejectionReason,  Label: 'Rejection Reason' }
+    ]
+  }
+);
+
+annotate service.SeniorActiveProjects_MaterialRequests with {
+  requestNumber   @title: 'Request Number'    @Common.FieldControl: #ReadOnly;
+  requestDate     @title: 'Request Date'      @Common.FieldControl: #ReadOnly;
+  requiredDate    @title: 'Required By'       @mandatory;
+  priority        @title: 'Priority';
+  purpose         @title: 'Purpose / Justification'  @UI.MultiLineText: true;
+  siteLocation    @title: 'Site / Work Area';
+  status          @title: 'Status'            @Common.FieldControl: #ReadOnly;
+  remarks         @title: 'Remarks'           @UI.MultiLineText: true;
+  approvalDate    @title: 'Approval Date'     @Common.FieldControl: #ReadOnly;
+  rejectionReason @title: 'Rejection Reason'  @Common.FieldControl: #ReadOnly  @UI.MultiLineText: true;
+  requestedBy @title: 'Requested By'
+    @Common.FieldControl: #ReadOnly
+    @Common.Text           : requestedBy.userName
+    @Common.TextArrangement: #TextOnly;
+  approvedBy  @title: 'Reviewed By'
+    @Common.FieldControl: #ReadOnly
+    @Common.Text           : approvedBy.userName
+    @Common.TextArrangement: #TextOnly;
+}
+
+annotate service.SeniorActiveProjects_MaterialRequests with @(
+  UI.HeaderInfo: {
+    TypeName      : 'Material Request',
+    TypeNamePlural: 'Material Requests',
+    Title         : { $Type: 'UI.DataField', Value: requestNumber },
+    Description   : { $Type: 'UI.DataField', Value: status        }
+  },
+
+  UI.DataPoint#SAPMRStatus: {
+    Value       : status,
+    Title       : 'Status',
+    Criticality : criticality
+  },
+
+  UI.DataPoint#SAPMRRequired: {
+    Value : requiredDate,
+    Title : 'Required By'
+  },
+
+  UI.HeaderFacets: [
+    { $Type: 'UI.ReferenceFacet', Target: '@UI.DataPoint#SAPMRStatus',   Label: 'Status'      },
+    { $Type: 'UI.ReferenceFacet', Target: '@UI.DataPoint#SAPMRRequired', Label: 'Required By' }
+  ],
+
+  UI.Facets: [
+    {
+      $Type : 'UI.CollectionFacet',
+      ID    : 'SAPMRGeneralInfo',
+      Label : 'Request Details',
+      Facets: [
+        { $Type: 'UI.ReferenceFacet', Target: '@UI.FieldGroup#SAPMRRequestInfo', Label: 'Request Info'   },
+        { $Type: 'UI.ReferenceFacet', Target: '@UI.FieldGroup#SAPMRApproval',    Label: 'Approval Info'  }
+      ]
+    },
+    {
+      $Type  : 'UI.ReferenceFacet',
+      ID     : 'SAPMRItemsSection',
+      Target : 'items/@UI.LineItem',
+      Label  : 'Requested Materials'
+    }
+  ],
+
+  UI.FieldGroup#SAPMRRequestInfo: {
+    Label: 'Request Information',
+    Data : [
+      { $Type: 'UI.DataField', Value: requestNumber,  Label: 'Request No.'            },
+      { $Type: 'UI.DataField', Value: requestDate,    Label: 'Raised On'              },
+      { $Type: 'UI.DataField', Value: requiredDate,   Label: 'Required By'            },
+      { $Type: 'UI.DataField', Value: priority,       Label: 'Priority'               },
+      { $Type: 'UI.DataField', Value: requestedBy_ID, Label: 'Raised By'              },
+      { $Type: 'UI.DataField', Value: siteLocation,   Label: 'Site / Work Area'       },
+      { $Type: 'UI.DataField', Value: purpose,        Label: 'Purpose / Justification'},
+      { $Type: 'UI.DataField', Value: remarks,        Label: 'Remarks'                }
+    ]
+  },
+
+  UI.FieldGroup#SAPMRApproval: {
+    Label: 'Approval Details',
+    Data : [
+      { $Type: 'UI.DataField', Value: status,           Label: 'Status'           },
+      { $Type: 'UI.DataField', Value: approvedBy_ID,    Label: 'Reviewed By'      },
+      { $Type: 'UI.DataField', Value: approvalDate,     Label: 'Approval Date'    },
+      { $Type: 'UI.DataField', Value: rejectionReason,  Label: 'Rejection Reason' }
+    ]
+  }
+);
 
 // ═══════════════════════════════════════════════════════════════
 // MATERIAL REQUEST ITEMS — inline table in MR detail
@@ -577,12 +1039,40 @@ annotate service.MaterialRequests with {
 
 annotate service.MaterialRequestItems with @(
   UI.LineItem: [
-    { $Type: 'UI.DataField', Value: lineNumber,   Label: '#'           },
-    { $Type: 'UI.DataField', Value: material_ID,  Label: 'Material'    },
-    { $Type: 'UI.DataField', Value: description,  Label: 'Description' },
-    { $Type: 'UI.DataField', Value: requestedQty, Label: 'Qty'         },
-    { $Type: 'UI.DataField', Value: uom,          Label: 'UOM'         },
-    { $Type: 'UI.DataField', Value: remarks,      Label: 'Remarks'     }
+    { $Type: 'UI.DataField', Value: lineNumber,    Label: '#',               ![@UI.Importance]: #Low    },
+    { $Type: 'UI.DataField', Value: material_ID,   Label: 'Material',        ![@UI.Importance]: #High   },
+    { $Type: 'UI.DataField', Value: description,   Label: 'Description',     ![@UI.Importance]: #Medium },
+    { $Type: 'UI.DataField', Value: requestedQty,  Label: 'Qty',             ![@UI.Importance]: #High   },
+    { $Type: 'UI.DataField', Value: uom,           Label: 'UOM',             ![@UI.Importance]: #High   },
+    { $Type: 'UI.DataField', Value: estimatedRate, Label: 'Unit Rate (INR)', ![@UI.Importance]: #Medium },
+    { $Type: 'UI.DataField', Value: estimatedValue,Label: 'Est. Value (INR)',![@UI.Importance]: #Medium },
+    { $Type: 'UI.DataField', Value: remarks,       Label: 'Remarks',         ![@UI.Importance]: #Low    }
+  ]
+);
+
+annotate service.ActiveProjects_MaterialRequestItems with @(
+  UI.LineItem: [
+    { $Type: 'UI.DataField', Value: lineNumber,    Label: '#',               ![@UI.Importance]: #Low    },
+    { $Type: 'UI.DataField', Value: material_ID,   Label: 'Material',        ![@UI.Importance]: #High   },
+    { $Type: 'UI.DataField', Value: description,   Label: 'Description',     ![@UI.Importance]: #Medium },
+    { $Type: 'UI.DataField', Value: requestedQty,  Label: 'Qty',             ![@UI.Importance]: #High   },
+    { $Type: 'UI.DataField', Value: uom,           Label: 'UOM',             ![@UI.Importance]: #High   },
+    { $Type: 'UI.DataField', Value: estimatedRate, Label: 'Unit Rate (INR)', ![@UI.Importance]: #Medium },
+    { $Type: 'UI.DataField', Value: estimatedValue,Label: 'Est. Value (INR)',![@UI.Importance]: #Medium },
+    { $Type: 'UI.DataField', Value: remarks,       Label: 'Remarks',         ![@UI.Importance]: #Low    }
+  ]
+);
+
+annotate service.SeniorActiveProjects_MaterialRequestItems with @(
+  UI.LineItem: [
+    { $Type: 'UI.DataField', Value: lineNumber,    Label: '#',               ![@UI.Importance]: #Low    },
+    { $Type: 'UI.DataField', Value: material_ID,   Label: 'Material',        ![@UI.Importance]: #High   },
+    { $Type: 'UI.DataField', Value: description,   Label: 'Description',     ![@UI.Importance]: #Medium },
+    { $Type: 'UI.DataField', Value: requestedQty,  Label: 'Qty',             ![@UI.Importance]: #High   },
+    { $Type: 'UI.DataField', Value: uom,           Label: 'UOM',             ![@UI.Importance]: #High   },
+    { $Type: 'UI.DataField', Value: estimatedRate, Label: 'Unit Rate (INR)', ![@UI.Importance]: #Medium },
+    { $Type: 'UI.DataField', Value: estimatedValue,Label: 'Est. Value (INR)',![@UI.Importance]: #Medium },
+    { $Type: 'UI.DataField', Value: remarks,       Label: 'Remarks',         ![@UI.Importance]: #Low    }
   ]
 );
 
@@ -599,6 +1089,49 @@ annotate service.MaterialRequestItems with {
         { $Type: 'Common.ValueListParameterDisplayOnly', ValueListProperty: 'uom'                                           }
       ]
     };
-  requestedQty @title: 'Requested Qty' @mandatory;
-  uom          @title: 'UOM'           @mandatory;
+  requestedQty   @title: 'Requested Qty'      @mandatory;
+  uom            @title: 'UOM'                @mandatory;
+  estimatedRate  @title: 'Unit Rate (INR)';
+  estimatedValue @title: 'Est. Value (INR)'   @Common.FieldControl: #ReadOnly;
+  lineNumber     @title: '#'                  @Common.FieldControl: #ReadOnly;
+}
+
+annotate service.ActiveProjects_MaterialRequestItems with {
+  material @title: 'Material'
+    @Common.Text           : material.description
+    @Common.TextArrangement: #TextFirst
+    @Common.ValueList: {
+      CollectionPath: 'MaterialMaster',
+      Parameters: [
+        { $Type: 'Common.ValueListParameterOut',         LocalDataProperty: material_ID,  ValueListProperty: 'ID'          },
+        { $Type: 'Common.ValueListParameterDisplayOnly', ValueListProperty: 'materialCode'                                  },
+        { $Type: 'Common.ValueListParameterDisplayOnly', ValueListProperty: 'description'                                   },
+        { $Type: 'Common.ValueListParameterDisplayOnly', ValueListProperty: 'uom'                                           }
+      ]
+    };
+  requestedQty   @title: 'Requested Qty'    @mandatory;
+  uom            @title: 'UOM'              @mandatory;
+  estimatedRate  @title: 'Unit Rate (INR)';
+  estimatedValue @title: 'Est. Value (INR)' @Common.FieldControl: #ReadOnly;
+  lineNumber     @title: '#'               @Common.FieldControl: #ReadOnly;
+}
+
+annotate service.SeniorActiveProjects_MaterialRequestItems with {
+  material @title: 'Material'
+    @Common.Text           : material.description
+    @Common.TextArrangement: #TextFirst
+    @Common.ValueList: {
+      CollectionPath: 'MaterialMaster',
+      Parameters: [
+        { $Type: 'Common.ValueListParameterOut',         LocalDataProperty: material_ID,  ValueListProperty: 'ID'          },
+        { $Type: 'Common.ValueListParameterDisplayOnly', ValueListProperty: 'materialCode'                                  },
+        { $Type: 'Common.ValueListParameterDisplayOnly', ValueListProperty: 'description'                                   },
+        { $Type: 'Common.ValueListParameterDisplayOnly', ValueListProperty: 'uom'                                           }
+      ]
+    };
+  requestedQty   @title: 'Requested Qty'    @mandatory;
+  uom            @title: 'UOM'              @mandatory;
+  estimatedRate  @title: 'Unit Rate (INR)';
+  estimatedValue @title: 'Est. Value (INR)' @Common.FieldControl: #ReadOnly;
+  lineNumber     @title: '#'               @Common.FieldControl: #ReadOnly;
 }

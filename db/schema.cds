@@ -198,6 +198,9 @@ entity MaterialRequests : cuid, managed {
   project         : Association to Projects not null;
   requestDate     : Date;
   requiredDate    : Date         not null;
+  priority        : String(10)   default 'MEDIUM';
+  purpose         : String(300);
+  siteLocation    : String(200);
   requestedBy     : Association to Users;
   status          : RequestStatus default 'DRAFT';
   remarks         : String(500);
@@ -209,14 +212,16 @@ entity MaterialRequests : cuid, managed {
 }
 
 entity MaterialRequestItems : cuid {
-  request      : Association to MaterialRequests not null;
-  lineNumber   : Integer;
-  material     : Association to MaterialMaster   not null;
-  description  : String(200);
-  requestedQty : Decimal(13,3) not null;
-  uom          : String(10)   not null;
-  boqItem      : Association to BOQItems;
-  remarks      : String(200);
+  request        : Association to MaterialRequests not null;
+  lineNumber     : Integer;
+  material       : Association to MaterialMaster   not null;
+  description    : String(200);
+  requestedQty   : Decimal(13,3) not null;
+  uom            : String(10)   not null;
+  estimatedRate  : Decimal(13,2);
+  estimatedValue : Decimal(13,2);
+  boqItem        : Association to BOQItems;
+  remarks        : String(200);
 }
 
 // ═══════════════════════════════════════════════════════════════

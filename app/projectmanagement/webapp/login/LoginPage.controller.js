@@ -58,6 +58,11 @@ sap.ui.define([
             oSessionModel.setProperty("/userName",    sUsername);
             oSessionModel.setProperty("/loggedIn",    true);
 
+            // Persist session to survive browser reloads
+            sessionStorage.setItem("currentRole", sRole);
+            sessionStorage.setItem("userName",    sUsername);
+            sessionStorage.setItem("loggedIn",    "true");
+
             oComponent.getRouter().navTo("HomePage");
         }
     });

@@ -63,6 +63,18 @@ sap.ui.define([], function () {
         ],
         QuotationComparison: [
             "PROJECT_MANAGER", "PROCUREMENT_OFFICER", "MANAGEMENT"
+        ],
+        MRApprovalDashboard: [
+            "PROJECT_MANAGER", "MANAGEMENT"
+        ],
+        MRApprovalDetail: [
+            "PROJECT_MANAGER", "MANAGEMENT"
+        ],
+        EngineerMRObjectPage: [
+            "ENGINEER", "MANAGEMENT"
+        ],
+        SeniorMRObjectPage: [
+            "PROJECT_MANAGER", "MANAGEMENT"
         ]
     };
 

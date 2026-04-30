@@ -1,2 +1,6 @@
 ID;projectCode;projectName;clientName;location;state;capacityKWp;startDate;endDate;budget;spentAmount;currency;status;description;projectManager_ID
-852764c1-e1ee-4335-88f4-fb01eb1d7e4b;PRJ-2025-0001;Alpha Solar Park;TechCorp;Pune;Maharashtra;500;2025-01-01;2025-06-30;50000000;0;INR;ACTIVE;500kWp Ground Mount;a2a2f988-2268-40c4-a3d1-e1f411e56e5a
+852764c1-e1ee-4335-88f4-fb01eb1d7e4b;PRJ-2025-0001;Alpha Solar Park;TechCorp Solar;Pune;Maharashtra;500;2025-01-01;2025-12-31;50000000;12500000;INR;ACTIVE;500kWp Ground Mount Solar EPC;a2a2f988-2268-40c4-a3d1-e1f411e56e5a
+20000000-0000-4000-8000-000000000002;PRJ-2025-0002;Bhadla Solar Park Ph-III;Rajasthan Power Corp;Bhadla;Rajasthan;1000;2025-02-01;2026-01-31;95000000;23750000;INR;ACTIVE;1MWp Grid-Tied Solar EPC Phase III;a2a2f988-2268-40c4-a3d1-e1f411e56e5a
+30000000-0000-4000-8000-000000000003;PRJ-2025-0003;Rewa Ultra Mega Solar;MP Urja Vikas Nigam;Rewa;Madhya Pradesh;750;2025-03-01;2026-02-28;72000000;18000000;INR;ACTIVE;750kWp Ultra Mega Solar Plant;a2a2f988-2268-40c4-a3d1-e1f411e56e5a
+40000000-0000-4000-8000-000000000004;PRJ-2025-0004;Kamuthi Solar Plant;Tamil Nadu Genco;Kamuthi;Tamil Nadu;600;2025-01-15;2025-11-30;58000000;14500000;INR;ACTIVE;600kWp Ground Mount EPC Project;a2a2f988-2268-40c4-a3d1-e1f411e56e5a
+50000000-0000-4000-8000-000000000005;PRJ-2025-0005;Pavagada Solar Park;KREDL;Pavagada;Karnataka;850;2025-04-01;2026-03-31;82000000;12300000;INR;ACTIVE;850kWp Solar Park Extension;a2a2f988-2268-40c4-a3d1-e1f411e56e5a
