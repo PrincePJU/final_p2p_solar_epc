@@ -7,6 +7,8 @@ module.exports = class ProjectService extends cds.ApplicationService {
   async init() {
     const {
       Projects,
+      ActiveProjects,
+      SeniorActiveProjects,
       MaterialRequests,
       MaterialRequestItems,
       BOQItems
@@ -19,6 +21,11 @@ module.exports = class ProjectService extends cds.ApplicationService {
     // ── DERIVED FIELD CALCULATION ────────────────────────────────
     this.before('CREATE', MaterialRequestItems, this._validateRequestItem.bind(this));
     this.before('SAVE',   BOQItems,             this._calculateBOQValue.bind(this));
+
+    // ── BUSINESS GATING ──────────────────────────────────────────
+    this.before(['CREATE', 'UPDATE', 'DELETE'], BOQItems,         this._checkProjectActiveGate.bind(this));
+    this.before(['CREATE', 'UPDATE', 'DELETE'], MaterialRequests, this._checkProjectActiveGate.bind(this));
+    this.before('UPDATE', Projects,                               this._preventHeaderUpdateByEngineer.bind(this));
 
     // ── PROJECT ACTIONS ───────────────────────────────────────────
     this.on('activateProject',  Projects, this._activateProject.bind(this));
@@ -33,8 +40,10 @@ module.exports = class ProjectService extends cds.ApplicationService {
     this.on('closeRequest',   MaterialRequests, this._closeRequest.bind(this));
 
     // ── POST-READ ENRICHMENT ──────────────────────────────────────
-    this.after('READ', Projects,         this._enrichProjects.bind(this));
-    this.after('READ', MaterialRequests, this._enrichRequests.bind(this));
+    this.after('READ', Projects,             this._enrichProjects.bind(this));
+    this.after('READ', ActiveProjects,       this._enrichProjects.bind(this));
+    this.after('READ', SeniorActiveProjects, this._enrichProjects.bind(this));
+    this.after('READ', MaterialRequests,     this._enrichRequests.bind(this));
 
     await super.init();
   }
@@ -81,6 +90,39 @@ module.exports = class ProjectService extends cds.ApplicationService {
   // ═══════════════════════════════════════════════════════════════
   // VALIDATIONS
   // ═══════════════════════════════════════════════════════════════
+
+  async _checkProjectActiveGate(req) {
+    let project_ID = req.data?.project_ID;
+
+    // If project_ID is not in the payload (e.g. UPDATE/DELETE without providing it), fetch it from DB
+    if (!project_ID) {
+      const ID = req.data?.ID || (req.params && req.params[0]?.ID);
+      if (!ID) return; // Might be a deep insert inherited from parent
+
+      const record = await SELECT.one.from(req.target).where({ ID });
+      if (record) project_ID = record.project_ID || record.project_ID;
+    }
+
+    if (project_ID) {
+      const project = await SELECT.one.from(this.entities.Projects).where({ ID: project_ID });
+      if (project && project.status !== 'ACTIVE') {
+        return req.error(403, `Action blocked: Engineering activities are only allowed when the Project is ACTIVE. Current status is ${project.status}.`);
+      }
+    }
+  }
+
+  async _preventHeaderUpdateByEngineer(req) {
+    // Prevent engineers from modifying project header fields when creating BOQ/MRs in Draft mode
+    if (req.user && (req.user.is('ENGINEER') || req.user.is('Engineer'))) {
+      const updatedFields = Object.keys(req.data).filter(key => 
+        !['ID', 'IsActiveEntity', 'HasActiveEntity', 'HasDraftEntity', 'DraftAdministrativeData_DraftUUID', 'boqItems', 'materialRequests'].includes(key)
+      );
+      
+      if (updatedFields.length > 0) {
+        return req.error(403, `Engineers are restricted to editing Bill of Quantities and Material Requests. Modifying project header details is not allowed.`);
+      }
+    }
+  }
 
   async _validateRequestItem(req) {
     const item = req.data;

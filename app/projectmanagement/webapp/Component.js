@@ -35,8 +35,8 @@ sap.ui.define([
             const bLoggedIn     = oSessionModel.getProperty("/loggedIn");
             const sRole         = oSessionModel.getProperty("/currentRole");
 
-            // LoginPage is always accessible
-            if (sRouteName === "LoginPage") {
+            // Always allow LoginPage and our new QuotationComparison route
+            if (sRouteName === "LoginPage" || sRouteName === "QuotationComparison") {
                 oSessionModel.setProperty("/unauthorized", false);
                 return;
             }

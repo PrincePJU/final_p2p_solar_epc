@@ -85,6 +85,7 @@
             <!-- Role switcher (demo only — replaced by XSUAA token in production) -->
             <Select id="roleSelect" selectedKey="{view>/currentRole}"
                 change="onRoleChange" tooltip="Demo: Switch Role">
+                <core:Item id="roleItemBDM"         key="BDM"                 text="BDM" />
                 <core:Item id="roleItemEngineer"    key="ENGINEER"            text="Engineer" />
                 <core:Item id="roleItemSenior"      key="PROJECT_MANAGER"     text="Senior Engineer" />
                 <core:Item id="roleItemProcurement" key="PROCUREMENT_OFFICER" text="Procurement Officer" />

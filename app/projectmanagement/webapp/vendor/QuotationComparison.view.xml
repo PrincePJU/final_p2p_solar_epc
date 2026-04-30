@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mvc:View
+    controllerName="solar.epc.projectmanagement.vendor.QuotationComparison"
+    xmlns:mvc="sap.ui.core.mvc"
+    xmlns="sap.m"
+    xmlns:f="sap.f"
+    xmlns:core="sap.ui.core"
+    xmlns:layout="sap.ui.layout"
+    displayBlock="true">
+
+    <Page id="page" title="Compare Vendor Quotations" showNavButton="true" navButtonPress="onNavHome" backgroundDesign="List">
+
+        <!-- Header: Select Material Request -->
+        <headerContent>
+            <HBox id="hboxHeader" alignItems="Center">
+                <Label id="labelMR" text="Material Request:" class="sapUiSmallMarginEnd" design="Bold"/>
+                <Select id="mrSelect"
+                        change="onMRSelectChange"
+                        width="300px"
+                        class="sapUiSmallMarginEnd"
+                        forceSelection="false"
+                        items="{qc>/materialRequests}">
+                    <core:Item id="mrItem" key="{qc>ID}" text="{qc>requestNumber} — {qc>projectName}" />
+                </Select>
+                <Button id="btnCompareBids"
+                        text="Compare Bids"
+                        type="Emphasized"
+                        press="onLoadQuotations" />
+            </HBox>
+        </headerContent>
+
+        <content>
+            <VBox id="vboxContent" class="sapUiMediumMargin">
+
+                <!-- Dynamic Information Message -->
+                <MessageStrip id="messageStrip" text="{qc>/comparisonMessage}"
+                              type="Information"
+                              showIcon="true"
+                              class="sapUiSmallMarginBottom"
+                              visible="{qc>/hasQuotations}"/>
+
+                <!-- Quotations Comparison Table -->
+                <Table id="quotationsTable"
+                    items="{qc>/quotations}"
+                    visible="{qc>/hasQuotations}"
+                    mode="None"
+                    backgroundDesign="Solid">
+                    
+                    <headerToolbar>
+                        <OverflowToolbar id="tbBidsHeader">
+                            <Title id="titleBids" text="Vendor Bids ({qc>/quotationCount})" level="H2" />
+                            <ToolbarSpacer id="spacer1" />
+                            <Label id="labelSort" text="Sort By:" design="Bold" />
+                            <Select id="selectSort" selectedKey="{qc>/sortBy}" change="onSortChange">
+                                <core:Item id="itemTotalAmount" key="totalAmount" text="Total Price (Lowest First)" />
+                                <core:Item id="itemDeliveryLeadDays" key="deliveryLeadDays" text="Delivery Time (Fastest First)" />
+                                <core:Item id="itemVendorScore" key="vendorScore" text="Vendor Rating (Highest First)" />
+                            </Select>
+                        </OverflowToolbar>
+                    </headerToolbar>
+
+                    <columns>
+                        <Column width="5rem" hAlign="Center"><Text text="Rank" /></Column>
+                        <Column><Text text="Vendor Name" /></Column>
+                        <Column><Text text="Status" /></Column>
+                        <Column hAlign="Center"><Text text="Lead Time" /></Column>
+                        <Column hAlign="Center"><Text text="Vendor Score" /></Column>
+                        <Column hAlign="End"><Text text="Total Amount" /></Column>
+                        <Column hAlign="End" width="10rem"><Text text="Action" /></Column>
+                    </columns>
+
+                    <items>
+                        <ColumnListItem>
+                            <cells>
+                                <ObjectStatus text="#{qc>rank}" state="{qc>rankState}" inverted="true" />
+                                <ObjectIdentifier title="{qc>vendorName}" text="{qc>vendorCode}" />
+                                <ObjectStatus text="{qc>status}" state="{qc>statusState}" />
+                                <ObjectStatus text="{qc>deliveryLeadDays} Days" state="{qc>leadDaysState}" />
+                                <ObjectStatus text="{qc>vendorScore} / 10" state="{qc>scoreState}" />
+                                <ObjectNumber number="{qc>totalAmount}" unit="{qc>currency}" state="{qc>priceState}" />
+                                <Button text="Select Vendor" 
+                                        type="Accept" 
+                                        press="onSelectVendorPress" 
+                                        enabled="{= ${qc>status} !== 'SELECTED' &amp;&amp; ${qc>status} !== 'REJECTED' }" />
+                            </cells>
+                        </ColumnListItem>
+                    </items>
+                </Table>
+            </VBox>
+        </content>
+    </Page>
+</mvc:View>

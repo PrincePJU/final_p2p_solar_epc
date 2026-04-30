@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mvc:View
+    xmlns:mvc="sap.ui.core.mvc"
+    xmlns:f="sap.f"
+    displayBlock="true">
+    <!--
+        FCL root container.
+        sap.f.routing.Router manages layout changes automatically
+        (OneColumn / TwoColumnsMidExpanded / ThreeColumnsEndExpanded)
+        based on how many targets are active in the current route.
+    -->
+    <f:FlexibleColumnLayout
+        id="fcl"
+        backgroundDesign="Solid"
+        layout="OneColumn" />
+</mvc:View>

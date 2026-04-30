@@ -1,11 +1,4 @@
-ID,userId,userName,email,role,department,isActive
-c3000000-0000-0000-0000-000000000001,USR-001,Rajesh Kumar,rajesh.kumar@solarepc.in,ENGINEER,Engineering,true
-c3000000-0000-0000-0000-000000000002,USR-002,Priya Sharma,priya.sharma@solarepc.in,PROJECT_MANAGER,Project Management,true
-c3000000-0000-0000-0000-000000000003,USR-003,Amit Patel,amit.patel@solarepc.in,PROCUREMENT_OFFICER,Procurement,true
-c3000000-0000-0000-0000-000000000004,USR-004,Suresh Singh,suresh.singh@solarepc.in,SITE_ENGINEER,Operations,true
-c3000000-0000-0000-0000-000000000005,USR-005,Meena Iyer,meena.iyer@solarepc.in,FINANCE_OFFICER,Finance,true
-c3000000-0000-0000-0000-000000000006,USR-006,Vikram Mehta,vikram.mehta@solarepc.in,MANAGEMENT,Executive,true
-c3000000-0000-0000-0000-000000000007,USR-007,Ananya Das,ananya.das@solarepc.in,ENGINEER,Engineering,true
-c3000000-0000-0000-0000-000000000008,USR-008,Ravi Kumar,ravi.kumar@solarepc.in,PROJECT_MANAGER,Project Management,true
-c3000000-0000-0000-0000-000000000009,USR-009,Deepak Nair,deepak.nair@solarepc.in,PROCUREMENT_OFFICER,Procurement,true
-c3000000-0000-0000-0000-000000000010,USR-010,Sunita Reddy,sunita.reddy@solarepc.in,SITE_ENGINEER,Operations,true
+ID;userId;userName;email;role;department;isActive
+b4f40370-3d15-459f-9e83-54bd837d6d01;USR-001;Admin BDM;admin@solar.epc;BDM;Management;true
+a2a2f988-2268-40c4-a3d1-e1f411e56e5a;USR-002;Eng Manager;eng@solar.epc;PROJECT_MANAGER;Engineering;true
+9076de4d-9abd-45d1-8778-d543f843b0fa;USR-003;Proc Officer;proc@solar.epc;PROCUREMENT_OFFICER;Procurement;true

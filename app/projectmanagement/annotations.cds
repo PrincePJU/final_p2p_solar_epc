@@ -174,6 +174,8 @@ annotate service.Projects with @(
   ],
 
   // ── OBJECT PAGE SECTIONS ──────────────────────────────────────
+  // Navigation-property tables (boqItems, materialRequests) must be top-level
+  // ReferenceFacets — CollectionFacet wrappers block their rendering in FE v4.
   UI.Facets: [
     {
       $Type  : 'UI.CollectionFacet',
@@ -260,6 +262,204 @@ annotate service.Projects with {
         { $Type: 'Common.ValueListParameterDisplayOnly', ValueListProperty: 'role'                                            }
       ]
     };
+}
+
+// ── ACTIVE PROJECTS — list + object page annotations ─────────
+// Used by EngineeringProjectsList and SeniorProjectsList targets.
+// Same columns as Projects but bound to the ActiveProjects entity.
+annotate service.ActiveProjects with @(
+
+  UI.SelectionFields: [ state, projectManager_ID, startDate, endDate ],
+
+  UI.LineItem: [
+    { $Type: 'UI.DataField', Value: projectCode,  Label: 'Project Code',    ![@UI.Importance]: #High   },
+    { $Type: 'UI.DataField', Value: projectName,  Label: 'Project Name',    ![@UI.Importance]: #High   },
+    { $Type: 'UI.DataField', Value: clientName,   Label: 'Client',          ![@UI.Importance]: #Medium },
+    { $Type: 'UI.DataField', Value: location,     Label: 'Location',        ![@UI.Importance]: #Medium },
+    { $Type: 'UI.DataField', Value: capacityKWp,  Label: 'Capacity (kWp)',  ![@UI.Importance]: #Medium },
+    { $Type: 'UI.DataField', Value: budget,       Label: 'Budget (INR)',    ![@UI.Importance]: #High   },
+    { $Type: 'UI.DataField', Value: startDate,    Label: 'Start Date',      ![@UI.Importance]: #Medium },
+    { $Type: 'UI.DataField', Value: status,       Label: 'Status',          ![@UI.Importance]: #High   }
+  ],
+
+  UI.HeaderInfo: {
+    TypeName      : 'Project',
+    TypeNamePlural: 'Projects',
+    Title         : { $Type: 'UI.DataField', Value: projectName },
+    Description   : { $Type: 'UI.DataField', Value: projectCode }
+  },
+
+  UI.HeaderFacets: [
+    { $Type: 'UI.ReferenceFacet', Target: '@UI.DataPoint#APBudget',   Label: 'Budget'            },
+    { $Type: 'UI.ReferenceFacet', Target: '@UI.DataPoint#APCapacity', Label: 'Capacity'          }
+  ],
+
+  UI.DataPoint#APBudget: {
+    Value: budget,
+    Title: 'Total Budget',
+    ValueFormat: { NumberOfFractionalDigits: 0 }
+  },
+
+  UI.DataPoint#APCapacity: {
+    Value: capacityKWp,
+    Title: 'Capacity (kWp)'
+  },
+
+  UI.Facets: [
+    {
+      $Type : 'UI.CollectionFacet',
+      ID    : 'GeneralInfo',
+      Label : 'General Information',
+      Facets: [
+        { $Type: 'UI.ReferenceFacet', Target: '@UI.FieldGroup#APProjectDetails', Label: 'Project Details'  },
+        { $Type: 'UI.ReferenceFacet', Target: '@UI.FieldGroup#APDatesAndBudget', Label: 'Dates and Budget' }
+      ]
+    },
+    { $Type: 'UI.ReferenceFacet', ID: 'BOQSection', Target: 'boqItems/@UI.LineItem',         Label: 'Bill of Quantity'  },
+    { $Type: 'UI.ReferenceFacet', ID: 'MRSection',  Target: 'materialRequests/@UI.LineItem', Label: 'Material Requests' }
+  ],
+
+  UI.FieldGroup#APProjectDetails: {
+    Label: 'Project Details',
+    Data : [
+      { $Type: 'UI.DataField', Value: projectCode,        Label: 'Project Code'    },
+      { $Type: 'UI.DataField', Value: projectName,        Label: 'Project Name'    },
+      { $Type: 'UI.DataField', Value: clientName,         Label: 'Client'          },
+      { $Type: 'UI.DataField', Value: location,           Label: 'Location'        },
+      { $Type: 'UI.DataField', Value: state,              Label: 'State'           },
+      { $Type: 'UI.DataField', Value: capacityKWp,        Label: 'Capacity (kWp)' },
+      { $Type: 'UI.DataField', Value: projectManager_ID,  Label: 'Project Manager' },
+      { $Type: 'UI.DataField', Value: status,             Label: 'Status'          },
+      { $Type: 'UI.DataField', Value: description,        Label: 'Description'     }
+    ]
+  },
+
+  UI.FieldGroup#APDatesAndBudget: {
+    Label: 'Dates and Budget',
+    Data : [
+      { $Type: 'UI.DataField', Value: startDate,   Label: 'Start Date'   },
+      { $Type: 'UI.DataField', Value: endDate,     Label: 'End Date'     },
+      { $Type: 'UI.DataField', Value: currency,    Label: 'Currency'     },
+      { $Type: 'UI.DataField', Value: budget,      Label: 'Total Budget' },
+      { $Type: 'UI.DataField', Value: spentAmount, Label: 'Spent Amount' }
+    ]
+  }
+);
+
+// ── SENIOR ACTIVE PROJECTS — identical annotations ────────────
+// Separate entity alias so SeniorProjectsList route pattern resolves.
+annotate service.SeniorActiveProjects with @(
+
+  UI.SelectionFields: [ state, projectManager_ID, startDate, endDate ],
+
+  UI.LineItem: [
+    { $Type: 'UI.DataField', Value: projectCode,  Label: 'Project Code',    ![@UI.Importance]: #High   },
+    { $Type: 'UI.DataField', Value: projectName,  Label: 'Project Name',    ![@UI.Importance]: #High   },
+    { $Type: 'UI.DataField', Value: clientName,   Label: 'Client',          ![@UI.Importance]: #Medium },
+    { $Type: 'UI.DataField', Value: location,     Label: 'Location',        ![@UI.Importance]: #Medium },
+    { $Type: 'UI.DataField', Value: capacityKWp,  Label: 'Capacity (kWp)',  ![@UI.Importance]: #Medium },
+    { $Type: 'UI.DataField', Value: budget,       Label: 'Budget (INR)',    ![@UI.Importance]: #High   },
+    { $Type: 'UI.DataField', Value: startDate,    Label: 'Start Date',      ![@UI.Importance]: #Medium },
+    { $Type: 'UI.DataField', Value: status,       Label: 'Status',          ![@UI.Importance]: #High   }
+  ],
+
+  UI.HeaderInfo: {
+    TypeName      : 'Project',
+    TypeNamePlural: 'Projects',
+    Title         : { $Type: 'UI.DataField', Value: projectName },
+    Description   : { $Type: 'UI.DataField', Value: projectCode }
+  },
+
+  UI.HeaderFacets: [
+    { $Type: 'UI.ReferenceFacet', Target: '@UI.DataPoint#SAPBudget',   Label: 'Budget'   },
+    { $Type: 'UI.ReferenceFacet', Target: '@UI.DataPoint#SAPCapacity', Label: 'Capacity' }
+  ],
+
+  UI.DataPoint#SAPBudget: {
+    Value: budget,
+    Title: 'Total Budget',
+    ValueFormat: { NumberOfFractionalDigits: 0 }
+  },
+
+  UI.DataPoint#SAPCapacity: {
+    Value: capacityKWp,
+    Title: 'Capacity (kWp)'
+  },
+
+  UI.Facets: [
+    {
+      $Type : 'UI.CollectionFacet',
+      ID    : 'GeneralInfo',
+      Label : 'General Information',
+      Facets: [
+        { $Type: 'UI.ReferenceFacet', Target: '@UI.FieldGroup#SAPProjectDetails', Label: 'Project Details'  },
+        { $Type: 'UI.ReferenceFacet', Target: '@UI.FieldGroup#SAPDatesAndBudget', Label: 'Dates and Budget' }
+      ]
+    },
+    { $Type: 'UI.ReferenceFacet', ID: 'BOQSection', Target: 'boqItems/@UI.LineItem',         Label: 'Bill of Quantity'  },
+    { $Type: 'UI.ReferenceFacet', ID: 'MRSection',  Target: 'materialRequests/@UI.LineItem', Label: 'Material Requests' }
+  ],
+
+  UI.FieldGroup#SAPProjectDetails: {
+    Label: 'Project Details',
+    Data : [
+      { $Type: 'UI.DataField', Value: projectCode,       Label: 'Project Code'    },
+      { $Type: 'UI.DataField', Value: projectName,       Label: 'Project Name'    },
+      { $Type: 'UI.DataField', Value: clientName,        Label: 'Client'          },
+      { $Type: 'UI.DataField', Value: location,          Label: 'Location'        },
+      { $Type: 'UI.DataField', Value: state,             Label: 'State'           },
+      { $Type: 'UI.DataField', Value: capacityKWp,       Label: 'Capacity (kWp)' },
+      { $Type: 'UI.DataField', Value: projectManager_ID, Label: 'Project Manager' },
+      { $Type: 'UI.DataField', Value: status,            Label: 'Status'          },
+      { $Type: 'UI.DataField', Value: description,       Label: 'Description'     }
+    ]
+  },
+
+  UI.FieldGroup#SAPDatesAndBudget: {
+    Label: 'Dates and Budget',
+    Data : [
+      { $Type: 'UI.DataField', Value: startDate,   Label: 'Start Date'   },
+      { $Type: 'UI.DataField', Value: endDate,     Label: 'End Date'     },
+      { $Type: 'UI.DataField', Value: currency,    Label: 'Currency'     },
+      { $Type: 'UI.DataField', Value: budget,      Label: 'Total Budget' },
+      { $Type: 'UI.DataField', Value: spentAmount, Label: 'Spent Amount' }
+    ]
+  }
+);
+
+// ── ACTIVE PROJECTS — field-level read-only (header locked for engineers) ──
+annotate service.ActiveProjects with {
+  projectCode    @Common.FieldControl: #ReadOnly;
+  projectName    @Common.FieldControl: #ReadOnly;
+  clientName     @Common.FieldControl: #ReadOnly;
+  location       @Common.FieldControl: #ReadOnly;
+  state          @Common.FieldControl: #ReadOnly;
+  capacityKWp    @Common.FieldControl: #ReadOnly;
+  projectManager @Common.FieldControl: #ReadOnly;
+  status         @Common.FieldControl: #ReadOnly;
+  description    @Common.FieldControl: #ReadOnly;
+  startDate      @Common.FieldControl: #ReadOnly;
+  endDate        @Common.FieldControl: #ReadOnly;
+  currency       @Common.FieldControl: #ReadOnly;
+  budget         @Common.FieldControl: #ReadOnly;
+  spentAmount    @Common.FieldControl: #ReadOnly;
+}
+
+annotate service.SeniorActiveProjects with {
+  projectCode    @Common.FieldControl: #ReadOnly;
+  projectName    @Common.FieldControl: #ReadOnly;
+  clientName     @Common.FieldControl: #ReadOnly;
+  location       @Common.FieldControl: #ReadOnly;
+  state          @Common.FieldControl: #ReadOnly;
+  capacityKWp    @Common.FieldControl: #ReadOnly;
+  projectManager @Common.FieldControl: #ReadOnly;
+  status         @Common.FieldControl: #ReadOnly;
+  description    @Common.FieldControl: #ReadOnly;
+  startDate      @Common.FieldControl: #ReadOnly;
+  endDate        @Common.FieldControl: #ReadOnly;
+  currency       @Common.FieldControl: #ReadOnly;
+  budget         @Common.FieldControl: #ReadOnly;
+  spentAmount    @Common.FieldControl: #ReadOnly;
 }
 
 // ── STATUS DROPDOWN VALUE LIST ────────────────────────────────

@@ -8,6 +8,7 @@ sap.ui.define([
 
     // Demo credentials — in production these are validated server-side via XSUAA
     const DEMO_USERS = {
+        "bdm":         { password: "demo", role: RoleService.ROLES.BDM },
         "engineer":    { password: "demo", role: RoleService.ROLES.ENGINEER },
         "senior":      { password: "demo", role: RoleService.ROLES.PROJECT_MANAGER },
         "procurement": { password: "demo", role: RoleService.ROLES.PROCUREMENT_OFFICER },

@@ -3,7 +3,9 @@ sap.ui.define([], function () {
 
     // ── Role constants ──────────────────────────────────────────────────────────
     // PROJECT_MANAGER is the backend CDS role; it displays as "Senior Engineer"
+    // BDM manages the project lifecycle (create / activate / hold / cancel)
     const ROLES = {
+        BDM:                 "BDM",
         ENGINEER:            "ENGINEER",
         PROJECT_MANAGER:     "PROJECT_MANAGER",
         PROCUREMENT_OFFICER: "PROCUREMENT_OFFICER",
@@ -13,6 +15,7 @@ sap.ui.define([], function () {
     };
 
     const ROLE_DISPLAY = {
+        BDM:                 "Business Development Manager",
         ENGINEER:            "Engineer",
         PROJECT_MANAGER:     "Senior Engineer",
         PROCUREMENT_OFFICER: "Procurement Officer",
@@ -22,21 +25,44 @@ sap.ui.define([], function () {
     };
 
     // ── Route-level permissions ─────────────────────────────────────────────────
-    // Maps every manifest route name to the roles allowed to load it
+    // Maps every manifest route name to the roles allowed to load it.
+    // ProjectsList / ProjectsObjectPage  → BDM view (all projects, status actions)
+    // EngineeringProjectsList / ...Page  → Engineering view (ACTIVE only, no status actions)
     const ROUTE_PERMISSIONS = {
         LoginPage: [
-            "ENGINEER", "PROJECT_MANAGER", "PROCUREMENT_OFFICER",
+            "BDM", "ENGINEER", "PROJECT_MANAGER", "PROCUREMENT_OFFICER",
             "SITE_ENGINEER", "FINANCE_OFFICER", "MANAGEMENT"
         ],
         HomePage: [
-            "ENGINEER", "PROJECT_MANAGER", "PROCUREMENT_OFFICER",
+            "BDM", "ENGINEER", "PROJECT_MANAGER", "PROCUREMENT_OFFICER",
             "SITE_ENGINEER", "FINANCE_OFFICER", "MANAGEMENT"
         ],
         ProjectsList: [
-            "ENGINEER", "PROJECT_MANAGER", "PROCUREMENT_OFFICER", "MANAGEMENT"
+            "BDM", "MANAGEMENT"
         ],
         ProjectsObjectPage: [
-            "ENGINEER", "PROJECT_MANAGER", "PROCUREMENT_OFFICER", "MANAGEMENT"
+            "BDM", "MANAGEMENT"
+        ],
+        EngineeringProjectsList: [
+            "ENGINEER", "MANAGEMENT"
+        ],
+        EngineerObjectPage: [
+            "ENGINEER", "MANAGEMENT"
+        ],
+        SeniorProjectsList: [
+            "PROJECT_MANAGER", "MANAGEMENT"
+        ],
+        SeniorObjectPage: [
+            "PROJECT_MANAGER", "MANAGEMENT"
+        ],
+        VendorList: [
+            "PROCUREMENT_OFFICER", "PROJECT_MANAGER", "MANAGEMENT"
+        ],
+        VendorObjectPage: [
+            "PROCUREMENT_OFFICER", "PROJECT_MANAGER", "MANAGEMENT"
+        ],
+        QuotationComparison: [
+            "PROJECT_MANAGER", "PROCUREMENT_OFFICER", "MANAGEMENT"
         ]
     };
 
@@ -45,6 +71,28 @@ sap.ui.define([], function () {
     // features: miscellaneous feature flags
     // apps:     app launcher visibility
     const ROLE_ACCESS = {
+        BDM: {
+            tiles: {
+                engineeringProjects: true,
+                procurement:         false,
+                siteOps:             false,
+                vendorRebates:       false,
+                finance:             false
+            },
+            features: { insightCard: false },
+            apps: {
+                createMR:          false,
+                approveMR:         false,
+                manageVendors:     false,
+                compareQuotations: false,
+                createPO:          false,
+                trackDeliveries:   false,
+                postGR:            false,
+                reportDamage:      false,
+                validateInvoice:   false,
+                projectHealth:     false
+            }
+        },
         ENGINEER: {
             tiles: {
                 engineeringProjects: true,
@@ -77,7 +125,7 @@ sap.ui.define([], function () {
             },
             features: { insightCard: true },
             apps: {
-                createMR:          true,
+                createMR:          false,
                 approveMR:         true,
                 manageVendors:     false,
                 compareQuotations: true,
@@ -181,6 +229,23 @@ sap.ui.define([], function () {
 
     // ── Role-specific todo items ────────────────────────────────────────────────
     const ROLE_TODOS = {
+        BDM: [
+            {
+                task: "Activate Project — Rajasthan Solar Ph-II",
+                project: "Rajasthan Solar Ph-II", role: "BDM Action",
+                icon: "sap-icon://project-definition-triangle", status: "Awaiting Activation", state: "Warning"
+            },
+            {
+                task: "Review On-Hold Status — Bhadla Solar Park Ph-III",
+                project: "Bhadla Solar Park Ph-III", role: "BDM Action",
+                icon: "sap-icon://pause", status: "On Hold", state: "Error"
+            },
+            {
+                task: "Create New Project — Pavagada Extension",
+                project: "Pavagada Solar Park", role: "BDM Action",
+                icon: "sap-icon://create", status: "Draft Required", state: "None"
+            }
+        ],
         ENGINEER: [
             {
                 task: "Review BOQ for Bhadla Solar Park Ph-III",

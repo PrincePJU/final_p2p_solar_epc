@@ -98,16 +98,17 @@
                                         showCloseButton="false"
                                         class="sapUiTinyMarginBottom sapUiTinyMarginTop" />
 
-                                    <Label id="lblRole" text="Role" class="roleLabel sapUiTinyMarginTop" />
-                                    <Select id="roleSelect"
+                                    <Label id="loginLblRole" text="Role" class="roleLabel sapUiTinyMarginTop" />
+                                    <Select id="loginRoleSelect"
                                         selectedKey="{login>/selectedRole}"
                                         width="100%">
-                                        <core:Item id="roleItemEngineer"    key="ENGINEER"            text="Engineer" />
-                                        <core:Item id="roleItemSenior"      key="PROJECT_MANAGER"     text="Senior Engineer" />
-                                        <core:Item id="roleItemProcurement" key="PROCUREMENT_OFFICER" text="Procurement Officer" />
-                                        <core:Item id="roleItemSite"        key="SITE_ENGINEER"       text="Site Engineer" />
-                                        <core:Item id="roleItemFinance"     key="FINANCE_OFFICER"     text="Finance Officer" />
-                                        <core:Item id="roleItemMgmt"        key="MANAGEMENT"          text="Management" />
+                                        <core:Item id="loginRoleItemBDM"         key="BDM"                 text="Business Development Manager" />
+                                        <core:Item id="loginRoleItemEngineer"    key="ENGINEER"            text="Engineer" />
+                                        <core:Item id="loginRoleItemSenior"      key="PROJECT_MANAGER"     text="Senior Engineer" />
+                                        <core:Item id="loginRoleItemProcurement" key="PROCUREMENT_OFFICER" text="Procurement Officer" />
+                                        <core:Item id="loginRoleItemSite"        key="SITE_ENGINEER"       text="Site Engineer" />
+                                        <core:Item id="loginRoleItemFinance"     key="FINANCE_OFFICER"     text="Finance Officer" />
+                                        <core:Item id="loginRoleItemMgmt"        key="MANAGEMENT"          text="Management" />
                                     </Select>
 
                                     <!-- Login button -->

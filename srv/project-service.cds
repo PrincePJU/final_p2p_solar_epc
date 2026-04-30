@@ -6,7 +6,7 @@ using solar.epc as epc from '../db/schema';
 // Roles: Engineer, Project Manager, Management
 // ═══════════════════════════════════════════════════════════════
 
-@requires: ['Engineer','ProjectManager','Management','ProcurementOfficer']
+@requires: ['BDM','Engineer','ProjectManager','Management','ProcurementOfficer']
 service ProjectService @(path: '/project') {
 
   // ── READ-ONLY REFERENCES ──────────────────────────────────────
@@ -19,19 +19,22 @@ service ProjectService @(path: '/project') {
     where isActive = true;
 
   // ── PROJECTS ──────────────────────────────────────────────────
+  // BDM owns the project lifecycle: create, activate, hold, cancel.
+  // Engineers get read-only access so they can navigate to approved projects.
   @odata.draft.enabled
+  @cds.redirection.target
   @restrict: [
-    { grant: ['READ'],                          to: ['Engineer','ProjectManager','Management','ProcurementOfficer'] },
-    { grant: ['CREATE','UPDATE'],               to: ['Engineer','ProjectManager','Management'] },
-    { grant: ['DELETE'],                        to: ['Management'] },
-    { grant: ['activateProject','putOnHold','completeProject','cancelProject'], to: ['ProjectManager','Management'] }
+    { grant: ['READ'],   to: ['BDM','Management','ProcurementOfficer'] },
+    { grant: ['READ'],   to: ['Engineer','ProjectManager'], where: 'status = ''ACTIVE''' },
+    { grant: ['CREATE','UPDATE','DELETE'], to: ['BDM','Management'] },
+    { grant: ['UPDATE'], to: ['Engineer'], where: 'status = ''ACTIVE''' },
+    { grant: ['activateProject','putOnHold','completeProject','cancelProject'], to: ['BDM','Management'] }
   ]
   entity Projects as projection on epc.Projects {
     *,
     projectManager   : redirected to Users,
     boqItems         : redirected to BOQItems,
     materialRequests : redirected to MaterialRequests,
-    // Criticality: 0=Neutral, 1=Negative, 2=Critical, 3=Positive
     virtual criticality : Integer
   } actions {
     action activateProject()   returns Projects;
@@ -40,7 +43,43 @@ service ProjectService @(path: '/project') {
     action cancelProject(reason: String(500)) returns Projects;
   };
 
+  // ── ACTIVE PROJECTS — Engineer view ──────────────────────────
+  // Route pattern "ActiveProjects:?query:" → FE binds /ActiveProjects
+  // Not @readonly so FE ObjectPage allows Create on child tables (BOQ, MR).
+  // Project header fields are annotated @Common.FieldControl: #ReadOnly.
+  @readonly
+  @restrict: [
+    { grant: ['READ'], to: ['Engineer','ProjectManager','Management','ProcurementOfficer','BDM'] }
+  ]
+  entity ActiveProjects as projection on epc.Projects {
+    *,
+    projectManager   : redirected to Users,
+    boqItems         : redirected to BOQItems,
+    materialRequests : redirected to MaterialRequests,
+    virtual criticality : Integer
+  } where status = 'ACTIVE';
+
+  // ── SENIOR ACTIVE PROJECTS — Senior Engineer view ─────────────
+  // Separate entity so route pattern "SeniorActiveProjects:?query:"
+  // resolves cleanly — same data, distinct FE binding path.
+  @readonly
+  @restrict: [
+    { grant: ['READ'], to: ['Engineer','ProjectManager','Management','ProcurementOfficer','BDM'] }
+  ]
+  entity SeniorActiveProjects as projection on epc.Projects {
+    *,
+    projectManager   : redirected to Users,
+    boqItems         : redirected to BOQItems,
+    materialRequests : redirected to MaterialRequests,
+    virtual criticality : Integer
+  } where status = 'ACTIVE';
+
   // ── BOQ ITEMS ─────────────────────────────────────────────────
+  // Junior Engineers define BOQ. Senior Engineers and BDM are read-only here.
+  @restrict: [
+    { grant: ['READ'],                    to: ['BDM','Engineer','ProjectManager','Management','ProcurementOfficer'] },
+    { grant: ['CREATE','UPDATE','DELETE'], to: ['Engineer','Management'] }
+  ]
   entity BOQItems as projection on epc.BOQItems {
     *,
     project  : redirected to Projects,
@@ -48,12 +87,13 @@ service ProjectService @(path: '/project') {
   };
 
   // ── MATERIAL REQUESTS ─────────────────────────────────────────
-  // Draft is inherited from the parent Projects composition
+  // Junior Engineers create, fill items, and submit.
+  // Senior Engineers (ProjectManager) can only approve or reject — no creation.
   @restrict: [
-    { grant: ['READ'],                                        to: ['Engineer','ProjectManager','Management','ProcurementOfficer'] },
-    { grant: ['CREATE','UPDATE'],                             to: ['Engineer','ProjectManager'] },
-    { grant: ['submitRequest'],                               to: ['Engineer','ProjectManager'] },
-    { grant: ['approveRequest','rejectRequest','closeRequest'], to: ['ProjectManager','Management'] }
+    { grant: ['READ'],                                          to: ['BDM','Engineer','ProjectManager','Management','ProcurementOfficer'] },
+    { grant: ['CREATE','UPDATE'],                               to: ['Engineer','Management'] },
+    { grant: ['submitRequest'],                                 to: ['Engineer','Management'] },
+    { grant: ['approveRequest','rejectRequest','closeRequest'],  to: ['ProjectManager','Management'] }
   ]
   entity MaterialRequests as projection on epc.MaterialRequests {
     *,
@@ -81,189 +121,4 @@ service ProjectService @(path: '/project') {
   entity VendorQuotations as projection on epc.VendorQuotations;
 }
 
-// ─── ANNOTATIONS: PROJECTS ────────────────────────────────────
-
-annotate ProjectService.Projects with @(
-  UI.LineItem: [
-    { $Type: 'UI.DataField', Value: projectCode,    Label: 'Project Code'    },
-    { $Type: 'UI.DataField', Value: projectName,    Label: 'Project Name'    },
-    { $Type: 'UI.DataField', Value: clientName,     Label: 'Client'          },
-    { $Type: 'UI.DataField', Value: location,       Label: 'Location'        },
-    { $Type: 'UI.DataField', Value: capacityKWp,    Label: 'Capacity (kWp)'  },
-    { $Type: 'UI.DataField', Value: status,         Label: 'Status',
-      Criticality: criticality                                                },
-    { $Type: 'UI.DataField', Value: startDate,      Label: 'Start Date'      },
-    { $Type: 'UI.DataField', Value: budget,         Label: 'Budget (INR)'    }
-  ],
-  UI.SelectionFields: [ status, projectManager_ID, state ],
-  UI.HeaderInfo: {
-    TypeName      : 'Project',
-    TypeNamePlural: 'Projects',
-    Title         : { Value: projectName },
-    Description   : { Value: projectCode }
-  },
-  UI.Identification: [
-    { Value: projectCode },
-    { Value: projectName },
-    { Value: status      }
-  ],
-  UI.Facets: [
-    {
-      $Type : 'UI.ReferenceFacet',
-      Label : 'General Information',
-      Target: '@UI.FieldGroup#General'
-    },
-    {
-      $Type : 'UI.ReferenceFacet',
-      Label : 'Project Dates & Budget',
-      Target: '@UI.FieldGroup#DatesAndBudget'
-    },
-    {
-      $Type : 'UI.ReferenceFacet',
-      Label : 'Bill of Quantity',
-      Target: 'boqItems/@UI.LineItem'
-    },
-    {
-      $Type : 'UI.ReferenceFacet',
-      Label : 'Material Requests',
-      Target: 'materialRequests/@UI.LineItem'
-    }
-  ],
-  UI.FieldGroup#General: {
-    Label: 'General Information',
-    Data : [
-      { Value: projectCode    },
-      { Value: projectName    },
-      { Value: clientName     },
-      { Value: location       },
-      { Value: state          },
-      { Value: capacityKWp    },
-      { Value: projectManager_ID },
-      { Value: status         },
-      { Value: description    }
-    ]
-  },
-  UI.FieldGroup#DatesAndBudget: {
-    Label: 'Dates & Budget',
-    Data : [
-      { Value: startDate     },
-      { Value: endDate       },
-      { Value: budget        },
-      { Value: spentAmount   },
-      { Value: currency      }
-    ]
-  }
-);
-
-annotate ProjectService.Projects with {
-  projectCode    @title: 'Project Code'    @mandatory;
-  projectName    @title: 'Project Name'   @mandatory;
-  clientName     @title: 'Client Name';
-  location       @title: 'Site Location';
-  state          @title: 'State';
-  capacityKWp    @title: 'Capacity (kWp)';
-  startDate      @title: 'Start Date';
-  endDate        @title: 'End Date';
-  budget         @title: 'Budget';
-  spentAmount    @title: 'Spent Amount'   @readonly;
-  currency       @title: 'Currency';
-  status         @title: 'Status'         @readonly;
-  description    @title: 'Description';
-  projectManager @title: 'Project Manager'
-    @Common.ValueList: {
-      CollectionPath: 'Users',
-      Parameters: [
-        { $Type: 'Common.ValueListParameterOut', LocalDataProperty: projectManager_ID, ValueListProperty: 'ID' },
-        { $Type: 'Common.ValueListParameterDisplayOnly', ValueListProperty: 'userName' },
-        { $Type: 'Common.ValueListParameterDisplayOnly', ValueListProperty: 'role'     }
-      ]
-    };
-}
-
-// ─── ANNOTATIONS: BOQ ITEMS ───────────────────────────────────
-
-annotate ProjectService.BOQItems with @(
-  UI.LineItem: [
-    { Value: lineNumber,     Label: 'Line'             },
-    { Value: material_ID,    Label: 'Material'         },
-    { Value: description,    Label: 'Description'      },
-    { Value: uom,            Label: 'UOM'              },
-    { Value: plannedQty,     Label: 'Planned Qty'      },
-    { Value: estimatedRate,  Label: 'Est. Rate'        },
-    { Value: estimatedValue, Label: 'Est. Value'       },
-    { Value: requestedQty,   Label: 'Requested Qty'    },
-    { Value: orderedQty,     Label: 'Ordered Qty'      },
-    { Value: receivedQty,    Label: 'Received Qty'     }
-  ]
-);
-
-annotate ProjectService.BOQItems with {
-  material @title: 'Material'
-    @Common.ValueList: {
-      CollectionPath: 'MaterialMaster',
-      Parameters: [
-        { $Type: 'Common.ValueListParameterOut',         LocalDataProperty: material_ID,  ValueListProperty: 'ID'           },
-        { $Type: 'Common.ValueListParameterDisplayOnly', ValueListProperty: 'materialCode'                                  },
-        { $Type: 'Common.ValueListParameterDisplayOnly', ValueListProperty: 'description'                                   },
-        { $Type: 'Common.ValueListParameterDisplayOnly', ValueListProperty: 'uom'                                           }
-      ]
-    };
-}
-
-// ─── ANNOTATIONS: MATERIAL REQUESTS ──────────────────────────
-
-annotate ProjectService.MaterialRequests with @(
-  UI.LineItem: [
-    { Value: requestNumber, Label: 'Request No.'    },
-    { Value: project_ID,    Label: 'Project'        },
-    { Value: requestDate,   Label: 'Request Date'   },
-    { Value: requiredDate,  Label: 'Required Date'  },
-    { Value: requestedBy_ID,Label: 'Requested By'   },
-    { Value: status,        Label: 'Status'         }
-  ],
-  UI.SelectionFields: [ status, project_ID, requestedBy_ID ],
-  UI.HeaderInfo: {
-    TypeName      : 'Material Request',
-    TypeNamePlural: 'Material Requests',
-    Title         : { Value: requestNumber },
-    Description   : { Value: status }
-  },
-  UI.Facets: [
-    {
-      $Type : 'UI.ReferenceFacet',
-      Label : 'Request Details',
-      Target: '@UI.FieldGroup#Header'
-    },
-    {
-      $Type : 'UI.ReferenceFacet',
-      Label : 'Request Items',
-      Target: 'items/@UI.LineItem'
-    }
-  ],
-  UI.FieldGroup#Header: {
-    Label: 'Request Details',
-    Data : [
-      { Value: requestNumber  },
-      { Value: project_ID     },
-      { Value: requestDate    },
-      { Value: requiredDate   },
-      { Value: requestedBy_ID },
-      { Value: status         },
-      { Value: remarks        },
-      { Value: approvedBy_ID  },
-      { Value: approvalDate   },
-      { Value: rejectionReason}
-    ]
-  }
-);
-
-annotate ProjectService.MaterialRequestItems with @(
-  UI.LineItem: [
-    { Value: lineNumber,   Label: 'Line'         },
-    { Value: material_ID,  Label: 'Material'     },
-    { Value: description,  Label: 'Description'  },
-    { Value: requestedQty, Label: 'Qty'          },
-    { Value: uom,          Label: 'UOM'          },
-    { Value: remarks,      Label: 'Remarks'      }
-  ]
-);
+// UI annotations are maintained in app/projectmanagement/annotations.cds

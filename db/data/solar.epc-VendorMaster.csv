@@ -1,6 +1,4 @@
-ID,vendorCode,vendorName,gstin,pan,address,city,state,pincode,contactPerson,email,phone,bankAccount,bankIFSC,paymentTerms,isActive,performanceScore,totalOrders,onTimeDeliveries,qualityScore
-b2000000-0000-0000-0000-000000000001,VEN-001,SunTech Solar Components Pvt Ltd,27AABCS1234A1Z5,AABCS1234A,Plot 45 MIDC Taloja,Navi Mumbai,Maharashtra,410208,Rajiv Khanna,rajiv@suntechsolar.in,9876543210,12345678901234,HDFC0001234,Net 30,true,7.50,0,0,8.00
-b2000000-0000-0000-0000-000000000002,VEN-002,Waaree Energies Ltd,24AABCW5678B2Z6,AABCW5678B,Survey No 92 Surat Hazira Road,Surat,Gujarat,394510,Priyesh Mehta,priyesh@waaree.com,9988776655,98765432109876,ICIC0002345,Net 45,true,8.20,0,0,9.00
-b2000000-0000-0000-0000-000000000003,VEN-003,Polycab Wires Pvt Ltd,24AABCP9012C3Z7,AABCP9012C,Daman Industrial Estate,Daman,Daman and Diu,396210,Ashish Patel,ashish.patel@polycab.com,9765432198,56789012345678,SBIN0003456,Net 30,true,8.80,0,0,9.50
-b2000000-0000-0000-0000-000000000004,VEN-004,Phoenix Solar Solutions Pvt Ltd,29AABCP3456D4Z8,AABCP3456D,No 12 Electronic City Phase 2,Bengaluru,Karnataka,560100,Suresh Naidu,suresh@phoenixsolar.in,8877665544,34567890123456,AXIS0004567,Net 30,true,6.50,0,0,7.00
-b2000000-0000-0000-0000-000000000005,VEN-005,ABB Power Systems India Ltd,07AABCA7890E5Z9,AABCA7890E,Plot 6 Sector 18 Gurugram,Gurugram,Haryana,122015,Vikram Singh,vikram.singh@in.abb.com,9654321987,12345098765432,KOTAK005678,Net 60,true,9.10,0,0,9.20
+ID;vendorCode;vendorName;isActive;performanceScore;totalOrders;onTimeDeliveries;qualityScore
+6fbd9607-d515-4fd9-8cf4-0ee22eb9b522;VND-1001;SunTech Solar Ltd;true;8.5;12;11;8.2
+b1f22af5-8632-4f0c-9618-2bd4de92d5cd;VND-1002;PowerGrid Equipments;true;7.2;8;6;7.0
+8a6026c4-5ce1-41fa-9a45-c135bd97f0a7;VND-1003;GreenWatt India;true;9.1;25;24;9.0

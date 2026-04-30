@@ -62,6 +62,18 @@ service VendorService @(path: '/vendor') {
 // ─── ANNOTATIONS: VENDOR MASTER ───────────────────────────────
 
 annotate VendorService.VendorMaster with @(
+  UI.Identification: [
+    {
+      $Type  : 'UI.DataFieldForAction',
+      Action : 'VendorService.deactivateVendor',
+      Label  : 'Deactivate'
+    },
+    {
+      $Type  : 'UI.DataFieldForAction',
+      Action : 'VendorService.activateVendor',
+      Label  : 'Activate'
+    }
+  ],
   UI.LineItem: [
     { Value: vendorCode,       Label: 'Vendor Code'     },
     { Value: vendorName,       Label: 'Vendor Name'     },

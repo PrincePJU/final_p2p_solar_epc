@@ -7,14 +7,18 @@ sap.ui.define([
 ], function (Controller, JSONModel, MessageToast, MessageBox, RoleService) {
     "use strict";
 
-    // Routes that have a live frontend target
-    const LIVE_ROUTES = {
-        "Engineering & Projects": "ProjectsList",
-        "Procurement":            "ProjectsList",
-        "Site Operations":        "ProjectsList",
-        "Vendor Rebates":         "ProjectsList",
-        "Finance Cockpit":        "ProjectsList",
-        "MyHome":                 "HomePage"
+    // Tile → route mapping per role.
+    // BDM      → all projects (create/activate/hold/cancel)
+    // Engineer → ACTIVE projects only, can create BOQ + MR
+    // Senior   → ACTIVE projects only, can only approve/reject MR
+    const ROUTE_BY_ROLE = {
+        "BDM":                 { "Engineering & Projects": "ProjectsList",          default: "ProjectsList" },
+        "ENGINEER":            { "Engineering & Projects": "EngineeringProjectsList", default: "EngineeringProjectsList" },
+        "PROJECT_MANAGER":     { "Engineering & Projects": "SeniorProjectsList",    default: "SeniorProjectsList" },
+        "PROCUREMENT_OFFICER": { "Engineering & Projects": "ProjectsList",          default: "ProjectsList" },
+        "SITE_ENGINEER":       { "Engineering & Projects": "ProjectsList",          default: "ProjectsList" },
+        "FINANCE_OFFICER":     { "Engineering & Projects": "ProjectsList",          default: "ProjectsList" },
+        "MANAGEMENT":          { "Engineering & Projects": "ProjectsList",          default: "ProjectsList" }
     };
 
     return Controller.extend("solar.epc.projectmanagement.home.HomePage", {
@@ -102,9 +106,18 @@ sap.ui.define([
 
         onNavPress: function (oEvent) {
             const sHeader  = oEvent.getSource().getHeader();
-            const sRoute   = LIVE_ROUTES[sHeader];
             const oRouter  = this.getOwnerComponent().getRouter();
             const sRole    = this.getView().getModel("view").getProperty("/currentRole");
+
+            // Determine route based on tile header and role
+            let sRoute;
+            if (sHeader === "MyHome") {
+                sRoute = "HomePage";
+            } else {
+                // Role-aware routing: BDM/Management → ProjectsList, Engineers → EngineeringProjectsList
+                const oRoleRoutes = ROUTE_BY_ROLE[sRole];
+                sRoute = oRoleRoutes && oRoleRoutes[sHeader] ? oRoleRoutes[sHeader] : oRoleRoutes?.default;
+            }
 
             if (!sRoute) {
                 MessageToast.show("'" + sHeader + "' module is coming soon");
@@ -123,9 +136,35 @@ sap.ui.define([
         },
 
         onAppPress: function (oEvent) {
-            const oItem    = oEvent.getSource();
-            const sAppKey  = oItem.data("appKey");
-            const sLabel   = oItem.data("appLabel");
+            const oItem   = oEvent.getSource();
+            const sAppKey = oItem.data("appKey") || "";
+            const sLabel  = oItem.data("appLabel") || "";
+            const sRole   = this.getView().getModel("view").getProperty("/currentRole");
+            const oRouter = this.getOwnerComponent().getRouter();
+
+            if (sAppKey === "manageVendors") {
+                oRouter.navTo("VendorList");
+                return;
+            }
+
+            if (sAppKey === "createMR") {
+                // Junior Engineer: navigate to engineering project list to select a project and create MR
+                oRouter.navTo("EngineeringProjectsList");
+                return;
+            }
+
+            if (sAppKey === "approveMR") {
+                // Senior Engineer: navigate to their project list where Approve/Reject actions are visible
+                oRouter.navTo("SeniorProjectsList");
+                return;
+            }
+
+            if (sAppKey.toLowerCase().includes("compare") || sLabel.toLowerCase().includes("compare")) {
+                MessageToast.show("Loading Compare Quotations...");
+                oRouter.navTo("QuotationComparison");
+                return;
+            }
+
             MessageToast.show("Launching '" + sLabel + "' — screen coming soon");
         },
 

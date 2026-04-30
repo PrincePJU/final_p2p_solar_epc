@@ -1,0 +1,376 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mvc:View
+    controllerName="solar.epc.projectmanagement.dashboard.ManagementDashboard"
+    xmlns:mvc="sap.ui.core.mvc"
+    xmlns="sap.m"
+    xmlns:f="sap.f"
+    xmlns:card="sap.f.cards"
+    xmlns:cssgrid="sap.ui.layout.cssgrid"
+    xmlns:core="sap.ui.core"
+    xmlns:viz="sap.viz.ui5.controls"
+    xmlns:vizData="sap.viz.ui5.data"
+    xmlns:vizFeeds="sap.viz.ui5.controls.common.feeds"
+    xmlns:html="http://www.w3.org/1999/xhtml"
+    displayBlock="true">
+
+    <html:style>
+        .dashKpiTile  { border-radius: 0.75rem !important; }
+        .dashKpiBlue  { background: linear-gradient(135deg,#0A6ED1,#0854A1) !important; }
+        .dashKpiGreen { background: linear-gradient(135deg,#107E3E,#0C612F) !important; }
+        .dashKpiRed   { background: linear-gradient(135deg,#BB0000,#8B0000) !important; }
+        .dashKpiOrange{ background: linear-gradient(135deg,#E9730C,#C35F08) !important; }
+        .dashKpiPurple{ background: linear-gradient(135deg,#902BF5,#7520CC) !important; }
+        .dashKpiTile *{ color:#fff !important; text-shadow:none !important; }
+        .anomalyHigh  { border-left: 4px solid #BB0000; }
+        .anomalyMed   { border-left: 4px solid #E9730C; }
+    </html:style>
+
+    <f:DynamicPage id="ovpPage" headerExpanded="true" toggleHeaderOnTitleClick="true" showFooter="false">
+
+        <f:title>
+            <f:DynamicPageTitle>
+                <f:heading>
+                    <Title text="Management Overview" level="H2" />
+                </f:heading>
+                <f:snappedContent>
+                    <Text text="Solar EPC — Executive Summary" />
+                </f:snappedContent>
+                <f:actions>
+                    <Button text="Refresh" icon="sap-icon://refresh" press="onRefresh" type="Transparent" />
+                    <Button text="Back to Home" icon="sap-icon://home" press="onNavHome" type="Transparent" />
+                </f:actions>
+                <f:breadcrumbs>
+                    <Breadcrumbs>
+                        <Link text="Home" press="onNavHome" />
+                        <Link text="Management Overview" />
+                    </Breadcrumbs>
+                </f:breadcrumbs>
+            </f:DynamicPageTitle>
+        </f:title>
+
+        <f:header>
+            <f:DynamicPageHeader pinnable="true">
+                <HBox wrap="Wrap" class="sapUiSmallMarginTop sapUiSmallMarginBottom">
+                    <Text text="Last refreshed: {dashboard>/lastRefreshed}"
+                        class="sapUiSmallMarginEnd sapMAnnotatedText" />
+                    <ObjectStatus
+                        text="{dashboard>/systemStatus}"
+                        state="{dashboard>/systemState}"
+                        icon="sap-icon://status-positive" />
+                </HBox>
+            </f:DynamicPageHeader>
+        </f:header>
+
+        <f:content>
+            <VBox class="sapUiMediumMarginBeginEnd sapUiSmallMarginTopBottom">
+
+                <!-- ══════════════════════════════════════════════════════
+                     KPI TILES (row of 5 generic tiles)
+                ══════════════════════════════════════════════════════ -->
+                <Title text="Key Performance Indicators" level="H4" class="sapUiSmallMarginBottom" />
+                <cssgrid:CSSGrid
+                    gridTemplateColumns="repeat(auto-fill, minmax(180px, 1fr))"
+                    gridAutoRows="8rem"
+                    gridGap="0.75rem"
+                    class="sapUiSmallMarginBottom">
+
+                    <GenericTile id="kpiOngoing"
+                        class="dashKpiTile dashKpiBlue"
+                        header="Ongoing Projects"
+                        subheader="Currently Active">
+                        <TileContent unit="Projects">
+                            <NumericContent
+                                value="{dashboard>/kpi/ongoingProjects}"
+                                truncateValueTo="4"
+                                scale=""
+                                indicator="None"
+                                withMargin="false" />
+                        </TileContent>
+                    </GenericTile>
+
+                    <GenericTile id="kpiCompleted"
+                        class="dashKpiTile dashKpiGreen"
+                        header="Completed"
+                        subheader="Successfully Delivered">
+                        <TileContent unit="Projects">
+                            <NumericContent
+                                value="{dashboard>/kpi/completedProjects}"
+                                truncateValueTo="4"
+                                indicator="Up"
+                                withMargin="false" />
+                        </TileContent>
+                    </GenericTile>
+
+                    <GenericTile id="kpiDelayed"
+                        class="dashKpiTile dashKpiRed"
+                        header="Delayed Projects"
+                        subheader="Behind Schedule">
+                        <TileContent unit="Projects">
+                            <NumericContent
+                                value="{dashboard>/kpi/delayedProjects}"
+                                truncateValueTo="4"
+                                indicator="Down"
+                                withMargin="false" />
+                        </TileContent>
+                    </GenericTile>
+
+                    <GenericTile id="kpiPOValue"
+                        class="dashKpiTile dashKpiOrange"
+                        header="Total PO Value"
+                        subheader="Year to Date">
+                        <TileContent unit="Cr">
+                            <NumericContent
+                                value="{dashboard>/kpi/totalPOValueCr}"
+                                scale="Cr"
+                                truncateValueTo="5"
+                                withMargin="false" />
+                        </TileContent>
+                    </GenericTile>
+
+                    <GenericTile id="kpiPendingInvoices"
+                        class="dashKpiTile dashKpiPurple"
+                        header="Pending Invoices"
+                        subheader="Awaiting Approval">
+                        <TileContent unit="Invoices">
+                            <NumericContent
+                                value="{dashboard>/kpi/pendingInvoices}"
+                                truncateValueTo="4"
+                                indicator="Down"
+                                withMargin="false" />
+                        </TileContent>
+                    </GenericTile>
+
+                </cssgrid:CSSGrid>
+
+                <!-- ══════════════════════════════════════════════════════
+                     CHARTS ROW (3 columns)
+                ══════════════════════════════════════════════════════ -->
+                <Title text="Analytics" level="H4" class="sapUiSmallMarginBottom" />
+                <cssgrid:CSSGrid
+                    gridTemplateColumns="repeat(auto-fill, minmax(360px, 1fr))"
+                    gridGap="1rem"
+                    class="sapUiSmallMarginBottom">
+
+                    <!-- Budget vs Spend Chart -->
+                    <f:Card id="budgetCard">
+                        <f:header>
+                            <card:Header
+                                title="Budget vs Spent"
+                                subtitle="By Project (INR Lakhs)"
+                                iconSrc="sap-icon://bar-chart" />
+                        </f:header>
+                        <f:content>
+                            <viz:VizFrame
+                                id="budgetChart"
+                                vizType="bar"
+                                height="260px"
+                                width="100%">
+                                <viz:dataset>
+                                    <vizData:FlattenedDataset data="{dashboard>/budgetData}">
+                                        <vizData:dimensions>
+                                            <vizData:DimensionDefinition name="Project" value="{projectCode}" />
+                                        </vizData:dimensions>
+                                        <vizData:measures>
+                                            <vizData:MeasureDefinition name="Budget (L)" value="{budgetL}" />
+                                            <vizData:MeasureDefinition name="Spent (L)" value="{spentL}" />
+                                        </vizData:measures>
+                                    </vizData:FlattenedDataset>
+                                </viz:dataset>
+                                <viz:feeds>
+                                    <vizFeeds:FeedItem uid="primaryValues" type="Measure" values="Budget (L),Spent (L)" />
+                                    <vizFeeds:FeedItem uid="axisLabels"    type="Dimension" values="Project" />
+                                </viz:feeds>
+                            </viz:VizFrame>
+                        </f:content>
+                    </f:Card>
+
+                    <!-- Vendor Performance Chart -->
+                    <f:Card id="vendorCard">
+                        <f:header>
+                            <card:Header
+                                title="Vendor Performance"
+                                subtitle="On-Time Delivery % &amp; Score"
+                                iconSrc="sap-icon://supplier" />
+                        </f:header>
+                        <f:content>
+                            <viz:VizFrame
+                                id="vendorChart"
+                                vizType="horizontal_bar"
+                                height="260px"
+                                width="100%">
+                                <viz:dataset>
+                                    <vizData:FlattenedDataset data="{dashboard>/vendorData}">
+                                        <vizData:dimensions>
+                                            <vizData:DimensionDefinition name="Vendor" value="{vendorName}" />
+                                        </vizData:dimensions>
+                                        <vizData:measures>
+                                            <vizData:MeasureDefinition name="OTD %" value="{onTimeDeliveryPct}" />
+                                            <vizData:MeasureDefinition name="Score" value="{performanceScore}" />
+                                        </vizData:measures>
+                                    </vizData:FlattenedDataset>
+                                </viz:dataset>
+                                <viz:feeds>
+                                    <vizFeeds:FeedItem uid="primaryValues" type="Measure" values="OTD %,Score" />
+                                    <vizFeeds:FeedItem uid="axisLabels"    type="Dimension" values="Vendor" />
+                                </viz:feeds>
+                            </viz:VizFrame>
+                        </f:content>
+                    </f:Card>
+
+                    <!-- Delivery Delay Chart -->
+                    <f:Card id="delayCard">
+                        <f:header>
+                            <card:Header
+                                title="Delivery Delays"
+                                subtitle="Average vs Max Delay Days"
+                                iconSrc="sap-icon://shipping-status" />
+                        </f:header>
+                        <f:content>
+                            <viz:VizFrame
+                                id="delayChart"
+                                vizType="column"
+                                height="260px"
+                                width="100%">
+                                <viz:dataset>
+                                    <vizData:FlattenedDataset data="{dashboard>/deliveryData}">
+                                        <vizData:dimensions>
+                                            <vizData:DimensionDefinition name="Vendor" value="{vendorName}" />
+                                        </vizData:dimensions>
+                                        <vizData:measures>
+                                            <vizData:MeasureDefinition name="Avg Delay" value="{avgDelayDays}" />
+                                            <vizData:MeasureDefinition name="Max Delay" value="{maxDelayDays}" />
+                                        </vizData:measures>
+                                    </vizData:FlattenedDataset>
+                                </viz:dataset>
+                                <viz:feeds>
+                                    <vizFeeds:FeedItem uid="primaryValues" type="Measure" values="Avg Delay,Max Delay" />
+                                    <vizFeeds:FeedItem uid="axisLabels"    type="Dimension" values="Vendor" />
+                                </viz:feeds>
+                            </viz:VizFrame>
+                        </f:content>
+                    </f:Card>
+
+                </cssgrid:CSSGrid>
+
+                <!-- ══════════════════════════════════════════════════════
+                     ANOMALY DETECTION CARD
+                ══════════════════════════════════════════════════════ -->
+                <f:Card id="anomalyCard" class="sapUiSmallMarginBottom" width="100%">
+                    <f:header>
+                        <card:Header
+                            title="Anomaly Detection"
+                            subtitle="Items requiring immediate management attention"
+                            statusText="{= ${dashboard>/anomalyCount} + ' Alert(s)'}"
+                            iconSrc="sap-icon://alert" />
+                    </f:header>
+                    <f:content>
+                        <List
+                            id="anomalyList"
+                            items="{dashboard>/anomalies}"
+                            noDataText="No anomalies detected — system is healthy."
+                            showSeparators="Inner">
+                            <StandardListItem
+                                title="{dashboard>title}"
+                                description="{dashboard>detail}"
+                                icon="{dashboard>icon}"
+                                iconInset="false"
+                                info="{dashboard>category}"
+                                infoState="{dashboard>infoState}"
+                                type="Active"
+                                press="onAnomalyPress" />
+                        </List>
+                    </f:content>
+                </f:Card>
+
+                <!-- ══════════════════════════════════════════════════════
+                     PROJECT STATUS SUMMARY TABLE
+                ══════════════════════════════════════════════════════ -->
+                <f:Card id="projectTableCard" width="100%">
+                    <f:header>
+                        <card:Header
+                            title="Project Status Summary"
+                            subtitle="Budget utilization and progress overview"
+                            iconSrc="sap-icon://project-definition-triangle" />
+                    </f:header>
+                    <f:content>
+                        <Table
+                            id="projectSummaryTable"
+                            items="{dashboard>/projects}"
+                            growing="true"
+                            growingThreshold="8"
+                            noDataText="No projects to display.">
+                            <columns>
+                                <Column><Text text="Project" /></Column>
+                                <Column minScreenWidth="Tablet"><Text text="Client" /></Column>
+                                <Column><Text text="Status" /></Column>
+                                <Column hAlign="End"><Text text="Budget (INR)" /></Column>
+                                <Column hAlign="End"><Text text="Spent (INR)" /></Column>
+                                <Column minScreenWidth="Desktop"><Text text="Utilization" /></Column>
+                            </columns>
+                            <items>
+                                <ColumnListItem type="Navigation" press="onProjectRowPress">
+                                    <Text text="{dashboard>projectName}" />
+                                    <Text text="{dashboard>clientName}" />
+                                    <ObjectStatus
+                                        text="{dashboard>status}"
+                                        state="{dashboard>statusState}" />
+                                    <ObjectNumber
+                                        number="{path: 'dashboard>budget', type: 'sap.ui.model.type.Float', formatOptions: {groupingEnabled: true, maxFractionDigits: 0}}"
+                                        unit="INR" />
+                                    <ObjectNumber
+                                        number="{path: 'dashboard>spentAmount', type: 'sap.ui.model.type.Float', formatOptions: {groupingEnabled: true, maxFractionDigits: 0}}"
+                                        unit="INR" />
+                                    <ProgressIndicator
+                                        percentValue="{dashboard>budgetUtilizationPct}"
+                                        displayValue="{dashboard>budgetUtilizationPct}%"
+                                        showValue="false"
+                                        state="{dashboard>budgetState}"
+                                        height="1rem" />
+                                </ColumnListItem>
+                            </items>
+                        </Table>
+                    </f:content>
+                </f:Card>
+
+                <!-- ══════════════════════════════════════════════════════
+                     INVOICE MATCHING SUMMARY
+                ══════════════════════════════════════════════════════ -->
+                <f:Card id="invoiceCard" class="sapUiSmallMarginTop" width="100%">
+                    <f:header>
+                        <card:Header
+                            title="Invoice Matching Summary"
+                            subtitle="3-Way match results by vendor"
+                            iconSrc="sap-icon://my-sales-order" />
+                    </f:header>
+                    <f:content>
+                        <Table
+                            id="invoiceSummaryTable"
+                            items="{dashboard>/invoiceSummary}"
+                            growing="true"
+                            growingThreshold="5"
+                            noDataText="No invoice data available.">
+                            <columns>
+                                <Column><Text text="Vendor" /></Column>
+                                <Column hAlign="End"><Text text="Total" /></Column>
+                                <Column hAlign="End"><Text text="Matched" /></Column>
+                                <Column hAlign="End"><Text text="Mismatch" /></Column>
+                                <Column hAlign="End"><Text text="Paid" /></Column>
+                            </columns>
+                            <items>
+                                <ColumnListItem>
+                                    <Text text="{dashboard>vendorName}" />
+                                    <ObjectNumber number="{dashboard>totalInvoices}" unit="" />
+                                    <ObjectNumber number="{dashboard>matched}" unit="" state="Success" />
+                                    <ObjectNumber number="{dashboard>mismatched}" unit="" state="Error" />
+                                    <ObjectNumber number="{dashboard>paid}" unit="" state="Success" />
+                                </ColumnListItem>
+                            </items>
+                        </Table>
+                    </f:content>
+                </f:Card>
+
+            </VBox>
+        </f:content>
+
+    </f:DynamicPage>
+</mvc:View>
