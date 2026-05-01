@@ -52,7 +52,7 @@
 
                                     <MessageStrip
                                         id="demoStrip"
-                                        text="Local: use a mocked user such as engineer1 / pass. BTP: leave fields empty and continue after XSUAA sign-in."
+                                        text="Local users (password: pass) — bdm1 · engineer1 · pm1 · proc1 · site1 · finance1 · mgmt1. BTP: leave fields empty."
                                         type="Information"
                                         showIcon="true"
                                         showCloseButton="false"
