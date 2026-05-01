@@ -18,7 +18,7 @@ sap.ui.define([
         "PROCUREMENT_OFFICER": { "Engineering & Projects": "ProjectsList", "Procurement": "POList", default: "POList" },
         "SITE_ENGINEER": { "Engineering & Projects": "ProjectsList", "Site Operations": "GRNList", default: "GRNList" },
         "FINANCE_OFFICER": { "Engineering & Projects": "ProjectsList", "Finance Cockpit": "InvoiceList", default: "InvoiceList" },
-        "MANAGEMENT": { "Engineering & Projects": "ProjectsList", "Procurement": "ProcurementMRList", default: "ProjectsList" }
+        "MANAGEMENT": { "Engineering & Projects": "ProjectsList", "Procurement": "ProcurementMRList", "Site Operations": "DeliveryList", "Finance Cockpit": "InvoiceList", default: "ProjectsList" }
     };
 
     return Controller.extend("solar.epc.projectmanagement.home.HomePage", {
@@ -250,7 +250,7 @@ sap.ui.define([
                 "compareQuotations":  "QuotationComparison",
                 "approvedMRs":        "ProcurementMRList",
                 "createPO":           "POList",
-                "trackDeliveries":    "POList",
+                "trackDeliveries":    "DeliveryList",
                 "postGR":             "GRNList",
                 "reportDamage":       "GRNList",
                 "validateInvoice":    "InvoiceList"

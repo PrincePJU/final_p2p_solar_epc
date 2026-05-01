@@ -271,7 +271,7 @@
                         <f:header>
                             <card:NumericHeader 
                                 title="Site Operations" 
-                                subtitle="Receipts &amp; Damage" 
+                                subtitle="Deliveries, Receipts &amp; Claims"
                                 number="{view>/kpis/siteOps/value}"
                                 scale="{view>/kpis/siteOps/scale}"
                                 trend="{view>/kpis/siteOps/trend}"

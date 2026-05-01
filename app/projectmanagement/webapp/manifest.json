@@ -246,6 +246,16 @@
           "target": "GRNObjectPage"
         },
         {
+          "pattern": "Deliveries:?query:",
+          "name": "DeliveryList",
+          "target": "DeliveryList"
+        },
+        {
+          "pattern": "Deliveries({key}):?query:",
+          "name": "DeliveryObjectPage",
+          "target": "DeliveryObjectPage"
+        },
+        {
           "pattern": "PurchaseOrders:?query:",
           "name": "POList",
           "target": "POList"
@@ -623,6 +633,66 @@
                     "DataFieldForAction::ReceiptService.raiseClaim":  { "visible": true },
                     "DataFieldForAction::ReceiptService.settleClaim": { "visible": true },
                     "DataFieldForAction::ReceiptService.rejectClaim": { "visible": true }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "DeliveryList": {
+          "type": "Component",
+          "id": "DeliveryList",
+          "name": "sap.fe.templates.ListReport",
+          "model": "procurementService",
+          "options": {
+            "settings": {
+              "contextPath": "/Deliveries",
+              "variantManagement": "Page",
+              "initialLoad": true,
+              "navigation": {
+                "Deliveries": {
+                  "detail": { "route": "DeliveryObjectPage" }
+                }
+              },
+              "controlConfiguration": {
+                "@com.sap.vocabularies.UI.v1.LineItem": {
+                  "tableSettings": {
+                    "type": "ResponsiveTable",
+                    "selectionMode": "Single",
+                    "enableExport": true,
+                    "condensedTableLayout": false,
+                    "personalization": { "column": true, "sort": true, "filter": true }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "DeliveryObjectPage": {
+          "type": "Component",
+          "id": "DeliveryObjectPage",
+          "name": "sap.fe.templates.ObjectPage",
+          "model": "procurementService",
+          "options": {
+            "settings": {
+              "contextPath": "/Deliveries",
+              "editableHeaderContent": false,
+              "sectionLayout": "Tabs",
+              "controlConfiguration": {
+                "@com.sap.vocabularies.UI.v1.Identification": {
+                  "actions": {
+                    "DataFieldForAction::ProcurementService.markInTransit": { "visible": true },
+                    "DataFieldForAction::ProcurementService.markDelivered": { "visible": true },
+                    "DataFieldForAction::ProcurementService.markDelayed":   { "visible": true }
+                  }
+                },
+                "items/@com.sap.vocabularies.UI.v1.LineItem": {
+                  "tableSettings": {
+                    "type": "ResponsiveTable",
+                    "selectionMode": "None",
+                    "enableExport": true,
+                    "condensedTableLayout": false,
+                    "personalization": { "column": true, "sort": true, "filter": true }
                   }
                 }
               }
