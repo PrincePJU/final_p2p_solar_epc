@@ -59,6 +59,14 @@
           "annotations": [],
           "odataVersion": "4.01"
         }
+      },
+      "dashboardService": {
+        "uri": "/dashboard/",
+        "type": "OData",
+        "settings": {
+          "annotations": [],
+          "odataVersion": "4.01"
+        }
       }
     }
   },
@@ -145,6 +153,15 @@
           "autoExpandSelect": true,
           "earlyRequests": true
         }
+      },
+      "dashboardService": {
+        "dataSource": "dashboardService",
+        "preload": false,
+        "settings": {
+          "operationMode": "Server",
+          "autoExpandSelect": true,
+          "earlyRequests": false
+        }
       }
     },
     "resources": {
@@ -169,6 +186,11 @@
           "pattern": "home",
           "name": "HomePage",
           "target": "HomePage"
+        },
+        {
+          "pattern": "management-overview",
+          "name": "ManagementDashboard",
+          "target": "ManagementDashboard"
         },
         {
           "pattern": "Projects:?query:",
@@ -979,6 +1001,12 @@
               }
             }
           }
+        },
+        "ManagementDashboard": {
+          "type": "View",
+          "id": "ManagementDashboard",
+          "name": "solar.epc.projectmanagement.management.ManagementDashboard",
+          "viewLevel": 2
         },
         "LoginPage": {
           "type": "View",

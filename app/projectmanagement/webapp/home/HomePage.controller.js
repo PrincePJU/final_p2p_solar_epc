@@ -18,7 +18,7 @@ sap.ui.define([
         "PROCUREMENT_OFFICER": { "Engineering & Projects": "ProjectsList", "Procurement": "POList", default: "POList" },
         "SITE_ENGINEER": { "Engineering & Projects": "ProjectsList", "Site Operations": "GRNList", default: "GRNList" },
         "FINANCE_OFFICER": { "Engineering & Projects": "ProjectsList", "Finance Cockpit": "InvoiceList", default: "InvoiceList" },
-        "MANAGEMENT": { "Engineering & Projects": "ProjectsList", "Procurement": "ProcurementMRList", "Site Operations": "DeliveryList", "Finance Cockpit": "InvoiceList", default: "ProjectsList" }
+        "MANAGEMENT": { "MyHome": "ManagementDashboard", "Engineering & Projects": "ProjectsList", "Procurement": "ProcurementMRList", "Site Operations": "DeliveryList", "Finance Cockpit": "InvoiceList", default: "ManagementDashboard" }
     };
 
     return Controller.extend("solar.epc.projectmanagement.home.HomePage", {
@@ -210,15 +210,12 @@ sap.ui.define([
             const oRouter = this.getOwnerComponent().getRouter();
             const sRole = this.getView().getModel("view").getProperty("/currentRole");
 
-            // Determine route based on tile header and role
-            let sRoute;
-            if (sHeader === "MyHome") {
-                sRoute = "HomePage";
-            } else {
-                // Role-aware routing: BDM/Management → ProjectsList, Engineers → EngineeringProjectsList
-                const oRoleRoutes = ROUTE_BY_ROLE[sRole];
-                sRoute = oRoleRoutes && oRoleRoutes[sHeader] ? oRoleRoutes[sHeader] : oRoleRoutes?.default;
-            }
+            // Determine route based on tile header and role.
+            // MyHome routes to ManagementDashboard for MANAGEMENT, otherwise HomePage.
+            const oRoleRoutes = ROUTE_BY_ROLE[sRole];
+            let sRoute = oRoleRoutes && oRoleRoutes[sHeader]
+                ? oRoleRoutes[sHeader]
+                : sHeader === "MyHome" ? "HomePage" : oRoleRoutes?.default;
 
             if (!sRoute) {
                 MessageToast.show("'" + sHeader + "' module is coming soon");

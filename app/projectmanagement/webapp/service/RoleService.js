@@ -118,6 +118,9 @@ sap.ui.define([], function () {
         DeliveryObjectPage: [
             "SITE_ENGINEER", "PROCUREMENT_OFFICER", "PROJECT_MANAGER", "MANAGEMENT"
         ],
+        ManagementDashboard: [
+            "MANAGEMENT"
+        ],
         POList: [
             "PROCUREMENT_OFFICER", "PROJECT_MANAGER", "MANAGEMENT"
         ],
