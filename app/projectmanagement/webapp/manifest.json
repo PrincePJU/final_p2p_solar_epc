@@ -51,6 +51,14 @@
           "annotations": [],
           "odataVersion": "4.01"
         }
+      },
+      "receiptService": {
+        "uri": "/receipt/",
+        "type": "OData",
+        "settings": {
+          "annotations": [],
+          "odataVersion": "4.01"
+        }
       }
     }
   },
@@ -122,6 +130,15 @@
       },
       "procurementService": {
         "dataSource": "procurementService",
+        "preload": true,
+        "settings": {
+          "operationMode": "Server",
+          "autoExpandSelect": true,
+          "earlyRequests": true
+        }
+      },
+      "receiptService": {
+        "dataSource": "receiptService",
         "preload": true,
         "settings": {
           "operationMode": "Server",
@@ -217,6 +234,26 @@
           "pattern": "ApprovedMaterialRequests({key}):?query:",
           "name": "ProcurementMRDetail",
           "target": "ProcurementMRDetail"
+        },
+        {
+          "pattern": "GRN:?query:",
+          "name": "GRNList",
+          "target": "GRNList"
+        },
+        {
+          "pattern": "GRN({key}):?query:",
+          "name": "GRNObjectPage",
+          "target": "GRNObjectPage"
+        },
+        {
+          "pattern": "PurchaseOrders:?query:",
+          "name": "POList",
+          "target": "POList"
+        },
+        {
+          "pattern": "PurchaseOrders({key}):?query:",
+          "name": "POObjectPage",
+          "target": "POObjectPage"
         },
         {
           "pattern": "MaterialRequests:?query:",
@@ -519,6 +556,151 @@
             }
           }
         },
+        "GRNList": {
+          "type": "Component",
+          "id": "GRNList",
+          "name": "sap.fe.templates.ListReport",
+          "model": "receiptService",
+          "options": {
+            "settings": {
+              "contextPath": "/MaterialReceipts",
+              "variantManagement": "Page",
+              "initialLoad": true,
+              "navigation": {
+                "MaterialReceipts": {
+                  "detail": { "route": "GRNObjectPage" }
+                }
+              },
+              "controlConfiguration": {
+                "@com.sap.vocabularies.UI.v1.LineItem": {
+                  "tableSettings": {
+                    "type": "ResponsiveTable",
+                    "selectionMode": "Single",
+                    "enableExport": true,
+                    "condensedTableLayout": false,
+                    "personalization": { "column": true, "sort": true, "filter": true }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "GRNObjectPage": {
+          "type": "Component",
+          "id": "GRNObjectPage",
+          "name": "sap.fe.templates.ObjectPage",
+          "model": "receiptService",
+          "options": {
+            "settings": {
+              "contextPath": "/MaterialReceipts",
+              "editableHeaderContent": false,
+              "sectionLayout": "Tabs",
+              "controlConfiguration": {
+                "@com.sap.vocabularies.UI.v1.Identification": {
+                  "actions": {
+                    "DataFieldForAction::ReceiptService.verifyReceipt": { "visible": true },
+                    "DataFieldForAction::ReceiptService.rejectReceipt": { "visible": true }
+                  }
+                },
+                "items/@com.sap.vocabularies.UI.v1.LineItem": {
+                  "tableSettings": {
+                    "type": "ResponsiveTable",
+                    "creationMode": { "name": "Inline" },
+                    "selectionMode": "Multi",
+                    "enableExport": true,
+                    "condensedTableLayout": false,
+                    "personalization": { "column": true, "sort": true, "filter": true }
+                  }
+                },
+                "damagedItems/@com.sap.vocabularies.UI.v1.LineItem": {
+                  "tableSettings": {
+                    "type": "ResponsiveTable",
+                    "creationMode": { "name": "Inline" },
+                    "selectionMode": "Single",
+                    "enableExport": true
+                  },
+                  "actions": {
+                    "DataFieldForAction::ReceiptService.raiseClaim":  { "visible": true },
+                    "DataFieldForAction::ReceiptService.settleClaim": { "visible": true },
+                    "DataFieldForAction::ReceiptService.rejectClaim": { "visible": true }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "POList": {
+          "type": "Component",
+          "id": "POList",
+          "name": "sap.fe.templates.AnalyticalListPage",
+          "model": "procurementService",
+          "options": {
+            "settings": {
+              "contextPath": "/PurchaseOrders",
+              "variantManagement": "Page",
+              "defaultTemplateAnnotationPath": "@com.sap.vocabularies.UI.v1.SelectionVariant#ActivePOs",
+              "navigation": {
+                "PurchaseOrders": {
+                  "detail": { "route": "POObjectPage" }
+                }
+              },
+              "initialLoad": true,
+              "controlConfiguration": {
+                "@com.sap.vocabularies.UI.v1.LineItem": {
+                  "tableSettings": {
+                    "type": "AnalyticalTable",
+                    "selectionMode": "Single",
+                    "enableExport": true,
+                    "condensedTableLayout": false,
+                    "personalization": { "column": true, "sort": true, "filter": true, "group": true }
+                  },
+                  "actions": {
+                    "StandardAction::Delete": { "visible": false }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "POObjectPage": {
+          "type": "Component",
+          "id": "POObjectPage",
+          "name": "sap.fe.templates.ObjectPage",
+          "model": "procurementService",
+          "options": {
+            "settings": {
+              "contextPath": "/PurchaseOrders",
+              "editableHeaderContent": false,
+              "sectionLayout": "Tabs",
+              "controlConfiguration": {
+                "@com.sap.vocabularies.UI.v1.Identification": {
+                  "actions": {
+                    "DataFieldForAction::ProcurementService.confirmPO": { "visible": true },
+                    "DataFieldForAction::ProcurementService.cancelPO":  { "visible": true },
+                    "DataFieldForAction::ProcurementService.closePO":   { "visible": true }
+                  }
+                },
+                "items/@com.sap.vocabularies.UI.v1.LineItem": {
+                  "tableSettings": {
+                    "type": "ResponsiveTable",
+                    "creationMode": { "name": "Inline" },
+                    "selectionMode": "Multi",
+                    "enableExport": true,
+                    "condensedTableLayout": false,
+                    "personalization": { "column": true, "sort": true, "filter": true }
+                  }
+                },
+                "deliveries/@com.sap.vocabularies.UI.v1.LineItem": {
+                  "tableSettings": {
+                    "type": "ResponsiveTable",
+                    "selectionMode": "Single",
+                    "enableExport": true
+                  }
+                }
+              }
+            }
+          }
+        },
         "MRApprovalDashboard": {
           "type": "Component",
           "id": "MRApprovalDashboard",
@@ -528,6 +710,7 @@
               "contextPath": "/MaterialRequests",
               "variantManagement": "Page",
               "initialLoad": true,
+              "hideFilterBar": true,
               "defaultTemplateAnnotationPath": "@com.sap.vocabularies.UI.v1.SelectionVariant#PendingApproval",
               "navigation": {
                 "MaterialRequests": {

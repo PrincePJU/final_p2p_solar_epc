@@ -15,8 +15,8 @@ sap.ui.define([
         "BDM": { "Engineering & Projects": "ProjectsList", default: "ProjectsList" },
         "ENGINEER": { "Engineering & Projects": "EngineeringProjectsList", default: "EngineeringProjectsList" },
         "PROJECT_MANAGER": { "Engineering & Projects": "SeniorProjectsList", "Procurement": "VendorList", default: "SeniorProjectsList" },
-        "PROCUREMENT_OFFICER": { "Engineering & Projects": "ProjectsList", "Procurement": "ProcurementMRList", default: "ProcurementMRList" },
-        "SITE_ENGINEER": { "Engineering & Projects": "ProjectsList", default: "ProjectsList" },
+        "PROCUREMENT_OFFICER": { "Engineering & Projects": "ProjectsList", "Procurement": "POList", default: "POList" },
+        "SITE_ENGINEER": { "Engineering & Projects": "ProjectsList", "Site Operations": "GRNList", default: "GRNList" },
         "FINANCE_OFFICER": { "Engineering & Projects": "ProjectsList", "Finance Cockpit": "InvoiceList", default: "InvoiceList" },
         "MANAGEMENT": { "Engineering & Projects": "ProjectsList", "Procurement": "ProcurementMRList", default: "ProjectsList" }
     };
@@ -188,7 +188,11 @@ sap.ui.define([
                 return;
             }
             if (sCurrentRole === "PROCUREMENT_OFFICER") {
-                oRouter.navTo("ProcurementMRList");
+                oRouter.navTo("POList");
+                return;
+            }
+            if (sCurrentRole === "SITE_ENGINEER") {
+                oRouter.navTo("GRNList");
                 return;
             }
             if (sCurrentRole === "FINANCE_OFFICER") {
@@ -240,12 +244,16 @@ sap.ui.define([
             const oRouter = this.getOwnerComponent().getRouter();
 
             const oNavMap = {
-                "manageVendors": "VendorList",
-                "createMR": "EngineeringProjectsList",
-                "approveMR": "MRApprovalDashboard",
-                "compareQuotations": "QuotationComparison",
-                "approvedMRs": "ProcurementMRList",
-                "validateInvoice": "InvoiceList"
+                "manageVendors":      "VendorList",
+                "createMR":           "EngineeringProjectsList",
+                "approveMR":          "MRApprovalDashboard",
+                "compareQuotations":  "QuotationComparison",
+                "approvedMRs":        "ProcurementMRList",
+                "createPO":           "POList",
+                "trackDeliveries":    "POList",
+                "postGR":             "GRNList",
+                "reportDamage":       "GRNList",
+                "validateInvoice":    "InvoiceList"
             };
 
             if (oNavMap[sAppKey]) {

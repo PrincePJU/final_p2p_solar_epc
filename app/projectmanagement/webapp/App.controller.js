@@ -1,15 +1,45 @@
 sap.ui.define([
     "sap/ui/core/mvc/Controller",
+    "sap/ui/model/json/JSONModel",
+    "sap/ui/core/routing/HashChanger",
     "sap/m/ActionSheet",
     "sap/m/Button",
     "sap/ui/core/Theming"
-], function (Controller, ActionSheet, Button, Theming) {
+], function (Controller, JSONModel, HashChanger, ActionSheet, Button, Theming) {
     "use strict";
 
     return Controller.extend("solar.epc.projectmanagement.App", {
         onInit: function () {
             // Apply default theme to ensure we are starting with the intended one
             Theming.setTheme("sap_horizon");
+
+            this._aHashHistory = [];
+            this._bBackNavigation = false;
+            this.getView().setModel(new JSONModel({
+                showBackButton: false
+            }), "app");
+
+            this.getOwnerComponent().getRouter().attachRouteMatched(this._onRouteMatched, this);
+        },
+
+        onBackPress: function () {
+            const oHashChanger = HashChanger.getInstance();
+            const sCurrentHash = oHashChanger.getHash();
+
+            if (this._aHashHistory[this._aHashHistory.length - 1] === sCurrentHash) {
+                this._aHashHistory.pop();
+            }
+
+            const sPreviousHash = this._aHashHistory[this._aHashHistory.length - 1];
+            this._bBackNavigation = true;
+
+            if (sPreviousHash) {
+                oHashChanger.setHash(sPreviousHash);
+            } else {
+                this.getOwnerComponent().getRouter().navTo("HomePage", {}, true);
+            }
+
+            this._updateBackButton();
         },
 
         onProfilePress: function (oEvent) {
@@ -50,6 +80,35 @@ sap.ui.define([
 
         onThemeChange: function (sTheme) {
             Theming.setTheme(sTheme);
+        },
+
+        _onRouteMatched: function (oEvent) {
+            const sRouteName = oEvent.getParameter("name");
+            const sHash = HashChanger.getInstance().getHash();
+
+            if (!sHash || sRouteName === "LoginPage") {
+                this._updateBackButton(sRouteName);
+                return;
+            }
+
+            if (this._bBackNavigation) {
+                this._bBackNavigation = false;
+                this._updateBackButton(sRouteName);
+                return;
+            }
+
+            if (this._aHashHistory[this._aHashHistory.length - 1] !== sHash) {
+                this._aHashHistory.push(sHash);
+            }
+
+            this._updateBackButton(sRouteName);
+        },
+
+        _updateBackButton: function (sRouteName) {
+            const bShow = sRouteName !== "LoginPage" &&
+                sRouteName !== "HomePage";
+
+            this.getView().getModel("app").setProperty("/showBackButton", bShow);
         }
     });
 });
