@@ -223,6 +223,68 @@ annotate ProcurementService.Deliveries with @(
   }
 );
 
+// ─── ALP ANNOTATIONS: PURCHASE ORDERS ───────────────────────────
+
+annotate ProcurementService.PurchaseOrders with {
+  grandTotal @Analytics.Measure: true  @Aggregation.default: #SUM;
+  subtotal   @Analytics.Measure: true  @Aggregation.default: #SUM;
+  taxAmount  @Analytics.Measure: true  @Aggregation.default: #SUM;
+}
+
+annotate ProcurementService.PurchaseOrders with @(
+  Aggregation.ApplySupported: {
+    Transformations       : ['aggregate', 'groupby', 'filter'],
+    GroupableProperties   : [status, vendor_ID, project_ID, currency],
+    AggregatableProperties: [
+      { Property: grandTotal },
+      { Property: subtotal   },
+      { Property: taxAmount  }
+    ]
+  },
+
+  // Default chart: donut by status (used by ALP split screen)
+  UI.Chart: {
+    $Type              : 'UI.ChartDefinitionType',
+    ChartType          : #Donut,
+    Title              : 'POs by Status',
+    Dimensions         : [status],
+    DimensionAttributes: [{ $Type: 'UI.ChartDimensionAttributeType', Dimension: status, Role: #Category }],
+    Measures           : [grandTotal],
+    MeasureAttributes  : [{ $Type: 'UI.ChartMeasureAttributeType', Measure: grandTotal, Role: #Axis1 }]
+  },
+
+  // Alternate chart: bar by vendor (switchable in ALP toolbar)
+  UI.Chart#POByVendor: {
+    $Type              : 'UI.ChartDefinitionType',
+    ChartType          : #Bar,
+    Title              : 'Spend by Vendor',
+    Dimensions         : [vendor_ID],
+    DimensionAttributes: [{ $Type: 'UI.ChartDimensionAttributeType', Dimension: vendor_ID, Role: #Category }],
+    Measures           : [grandTotal],
+    MeasureAttributes  : [{ $Type: 'UI.ChartMeasureAttributeType', Measure: grandTotal, Role: #Axis1 }]
+  },
+
+  UI.PresentationVariant: {
+    SortOrder     : [{ $Type: 'Common.SortOrderType', Property: poDate, Descending: true }],
+    Visualizations: ['@UI.LineItem', '@UI.Chart']
+  },
+
+  // Default filter: hide CANCELLED POs
+  UI.SelectionVariant#ActivePOs: {
+    SelectOptions: [{
+      PropertyName: status,
+      Ranges: [{ $Type: 'UI.SelectionRangeType', Sign: #I, Option: #NE, Low: 'CANCELLED' }]
+    }]
+  },
+
+  // ObjectPage action buttons
+  UI.Identification: [
+    { $Type: 'UI.DataFieldForAction', Action: 'ProcurementService.confirmPO', Label: 'Confirm PO' },
+    { $Type: 'UI.DataFieldForAction', Action: 'ProcurementService.cancelPO',  Label: 'Cancel PO'  },
+    { $Type: 'UI.DataFieldForAction', Action: 'ProcurementService.closePO',   Label: 'Close PO'   }
+  ]
+);
+
 annotate ProcurementService.DeliveryItems with @(
   UI.LineItem: [
     { Value: lineNumber,    Label: 'Line'          },

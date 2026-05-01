@@ -12,12 +12,17 @@ module.exports = class ProjectService extends cds.ApplicationService {
       MaterialRequests,
       ActiveProjects_MaterialRequests,
       SeniorActiveProjects_MaterialRequests,
+      ApprovedMaterialRequests,
       MaterialRequestItems,
       ActiveProjects_MaterialRequestItems,
       SeniorActiveProjects_MaterialRequestItems,
       BOQItems,
       ActiveProjects_BOQItems,
-      SeniorActiveProjects_BOQItems
+      SeniorActiveProjects_BOQItems,
+      VendorMaster,
+      Invoices,
+      InvoiceItems,
+      ThreeWayMatchResults
     } = this.entities;
 
     // ── AUTO-NUMBERING ────────────────────────────────────────────
@@ -25,6 +30,8 @@ module.exports = class ProjectService extends cds.ApplicationService {
     this.before('CREATE', MaterialRequests,                      this._generateRequestNumber.bind(this));
     this.before('CREATE', ActiveProjects_MaterialRequests,       this._generateRequestNumber.bind(this));
     this.before('CREATE', SeniorActiveProjects_MaterialRequests, this._generateRequestNumber.bind(this));
+    this.before('CREATE', VendorMaster,                          this._generateVendorCode.bind(this));
+    this.before('CREATE', Invoices,                              this._generateInvoiceNumber.bind(this));
 
     // ── DERIVED FIELD CALCULATION ────────────────────────────────
     this.before('CREATE', MaterialRequestItems,                      this._validateRequestItem.bind(this));
@@ -33,6 +40,9 @@ module.exports = class ProjectService extends cds.ApplicationService {
     this.before('SAVE',   BOQItems,                                  this._calculateBOQValue.bind(this));
     this.before('SAVE',   ActiveProjects_BOQItems,                   this._calculateBOQValue.bind(this));
     this.before('SAVE',   SeniorActiveProjects_BOQItems,             this._calculateBOQValue.bind(this));
+    this.before('CREATE', Invoices,                                  this._validateInvoice.bind(this));
+    this.before(['CREATE','UPDATE'], InvoiceItems,                   this._calculateInvoiceItemAmounts.bind(this));
+    this.after(['CREATE','UPDATE','DELETE'], InvoiceItems, (_, req) => this._recalculateInvoiceTotals(req));
 
     // ── BUSINESS GATING ──────────────────────────────────────────
     this.before(['CREATE', 'UPDATE', 'DELETE'], BOQItems,                              this._checkProjectActiveGate.bind(this));
@@ -57,15 +67,232 @@ module.exports = class ProjectService extends cds.ApplicationService {
       this.on('closeRequest',   entity, this._closeRequest.bind(this));
     }
 
+    // ── VENDOR MASTER ACTIONS ─────────────────────────────────────
+    this.on('activateVendor',   VendorMaster, this._activateVendor.bind(this));
+    this.on('deactivateVendor', VendorMaster, this._deactivateVendor.bind(this));
+
+    // ── INVOICE ACTIONS ───────────────────────────────────────────
+    this.on('submitInvoice',        Invoices, this._submitInvoice.bind(this));
+    this.on('performThreeWayMatch', Invoices, this._performThreeWayMatch.bind(this));
+    this.on('approveInvoice',       Invoices, this._approveInvoice.bind(this));
+    this.on('rejectInvoice',        Invoices, this._rejectInvoice.bind(this));
+    this.on('markPaid',             Invoices, this._markPaid.bind(this));
+
     // ── POST-READ ENRICHMENT ──────────────────────────────────────
-    this.after('READ', Projects,             this._enrichProjects.bind(this));
-    this.after('READ', ActiveProjects,       this._enrichProjects.bind(this));
-    this.after('READ', SeniorActiveProjects, this._enrichProjects.bind(this));
-    this.after('READ', MaterialRequests,     this._enrichRequests.bind(this));
+    this.after('READ', Projects,                    this._enrichProjects.bind(this));
+    this.after('READ', ActiveProjects,              this._enrichProjects.bind(this));
+    this.after('READ', SeniorActiveProjects,        this._enrichProjects.bind(this));
+    this.after('READ', MaterialRequests,            this._enrichRequests.bind(this));
     this.after('READ', ActiveProjects_MaterialRequests,       this._enrichRequests.bind(this));
     this.after('READ', SeniorActiveProjects_MaterialRequests, this._enrichRequests.bind(this));
+    this.after('READ', ApprovedMaterialRequests,    this._enrichRequests.bind(this));
 
     await super.init();
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // VENDOR MASTER
+  // ═══════════════════════════════════════════════════════════════
+
+  async _generateVendorCode(req) {
+    if (req.data.vendorCode) return;
+    const year = new Date().getFullYear();
+    const result = await SELECT.one.from(this.entities.VendorMaster)
+      .columns('vendorCode').orderBy('createdAt desc');
+    let seq = 1;
+    if (result?.vendorCode) {
+      const match = result.vendorCode.match(/VND-\d{4}-(\d{4})$/);
+      if (match) seq = parseInt(match[1]) + 1;
+    }
+    req.data.vendorCode       = `VND-${year}-${String(seq).padStart(4, '0')}`;
+    req.data.isActive         = req.data.isActive         ?? true;
+    req.data.performanceScore = req.data.performanceScore ?? 0;
+    req.data.totalOrders      = req.data.totalOrders      ?? 0;
+    req.data.onTimeDeliveries = req.data.onTimeDeliveries ?? 0;
+    req.data.qualityScore     = req.data.qualityScore     ?? 0;
+  }
+
+  async _activateVendor(req) {
+    const { ID } = req.params[0];
+    await UPDATE(this.entities.VendorMaster).set({ isActive: true }).where({ ID });
+    return SELECT.one.from(this.entities.VendorMaster).where({ ID });
+  }
+
+  async _deactivateVendor(req) {
+    const { ID } = req.params[0];
+    await UPDATE(this.entities.VendorMaster).set({ isActive: false }).where({ ID });
+    return SELECT.one.from(this.entities.VendorMaster).where({ ID });
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // INVOICE — AUTO-NUMBERING & VALIDATION
+  // ═══════════════════════════════════════════════════════════════
+
+  async _generateInvoiceNumber(req) {
+    if (req.data.invoiceNumber) return;
+    const year = new Date().getFullYear();
+    const result = await SELECT.one.from(this.entities.Invoices)
+      .columns('invoiceNumber').orderBy('createdAt desc');
+    let seq = 1;
+    if (result?.invoiceNumber) {
+      const match = result.invoiceNumber.match(/INV-\d{4}-(\d{4})$/);
+      if (match) seq = parseInt(match[1]) + 1;
+    }
+    req.data.invoiceNumber = `INV-${year}-${String(seq).padStart(4, '0')}`;
+    req.data.invoiceDate   = req.data.invoiceDate || new Date().toISOString().slice(0, 10);
+    req.data.status        = 'DRAFT';
+    req.data.subtotal      = 0;
+    req.data.taxAmount     = 0;
+    req.data.totalAmount   = 0;
+  }
+
+  async _validateInvoice(req) {
+    const inv = req.data;
+    if (!inv.vendorInvoiceNo)  return req.error(400, 'Vendor Invoice Number is mandatory', 'vendorInvoiceNo');
+    if (!inv.purchaseOrder_ID) return req.error(400, 'Purchase Order reference is mandatory', 'purchaseOrder_ID');
+    const existing = await SELECT.one.from(this.entities.Invoices)
+      .where({ vendorInvoiceNo: inv.vendorInvoiceNo, vendor_ID: inv.vendor_ID });
+    if (existing) return req.error(400, `Vendor invoice ${inv.vendorInvoiceNo} already exists for this vendor`, 'vendorInvoiceNo');
+  }
+
+  _calculateInvoiceItemAmounts(req) {
+    const item = req.data;
+    if (item.invoicedQty !== undefined && item.unitPrice !== undefined) {
+      const base     = parseFloat((item.invoicedQty * item.unitPrice).toFixed(4));
+      const taxPct   = item.taxPercent ?? 18;
+      item.taxAmount   = parseFloat((base * taxPct / 100).toFixed(2));
+      item.totalAmount = parseFloat((base + item.taxAmount).toFixed(2));
+    }
+  }
+
+  async _recalculateInvoiceTotals(req) {
+    const invoiceId = req.data?.invoice_ID;
+    if (!invoiceId) return;
+    const items = await SELECT.from(this.entities.InvoiceItems).where({ invoice_ID: invoiceId });
+    let subtotal = 0, taxAmount = 0;
+    for (const item of items) {
+      const base = parseFloat(((item.invoicedQty || 0) * (item.unitPrice || 0)).toFixed(4));
+      const tax  = parseFloat((base * (item.taxPercent || 18) / 100).toFixed(2));
+      subtotal  += base;
+      taxAmount += tax;
+    }
+    await UPDATE(this.entities.Invoices)
+      .set({ subtotal, taxAmount, totalAmount: parseFloat((subtotal + taxAmount).toFixed(2)) })
+      .where({ ID: invoiceId });
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // INVOICE ACTIONS
+  // ═══════════════════════════════════════════════════════════════
+
+  async _submitInvoice(req) {
+    const { ID } = req.params[0];
+    const inv = await SELECT.one.from(this.entities.Invoices).where({ ID });
+    if (!inv) return req.error(404, `Invoice ${ID} not found`);
+    if (inv.status !== 'DRAFT') return req.error(400, `Only DRAFT invoices can be submitted. Current: ${inv.status}`);
+    const items = await SELECT.from(this.entities.InvoiceItems).where({ invoice_ID: ID });
+    if (!items?.length) return req.error(400, 'Cannot submit invoice with no line items');
+    await UPDATE(this.entities.Invoices).set({ status: 'SUBMITTED' }).where({ ID });
+    return SELECT.one.from(this.entities.Invoices).where({ ID });
+  }
+
+  async _performThreeWayMatch(req) {
+    const { ID } = req.params[0];
+    const inv = await SELECT.one.from(this.entities.Invoices).where({ ID });
+    if (!inv) return req.error(404, `Invoice ${ID} not found`);
+    if (!['SUBMITTED','UNDER_REVIEW','MISMATCH'].includes(inv.status))
+      return req.error(400, `Cannot run three-way match on invoice in status: ${inv.status}`);
+    if (!inv.receipt_ID) return req.error(400, 'Invoice must be linked to a Material Receipt before three-way match');
+
+    const invItems    = await SELECT.from(this.entities.InvoiceItems).where({ invoice_ID: ID });
+    const poItems     = await SELECT.from(cds.entities('solar.epc').PurchaseOrderItems).where({ purchaseOrder_ID: inv.purchaseOrder_ID });
+    const receiptItems= await SELECT.from(cds.entities('solar.epc').MaterialReceiptItems).where({ receipt_ID: inv.receipt_ID });
+
+    await DELETE.from(this.entities.ThreeWayMatchResults).where({ invoice_ID: ID });
+
+    let overallStatus = 'MATCHED';
+    const records = [];
+
+    for (const invItem of invItems) {
+      const poItem      = poItems.find(p => p.ID === invItem.poItem_ID || p.material_ID === invItem.material_ID);
+      const receiptItem = receiptItems.find(r => r.material_ID === invItem.material_ID || (poItem && r.poItem_ID === poItem.ID));
+
+      const poQty      = poItem?.orderedQty      || 0;
+      const receivedQty= receiptItem?.acceptedQty || 0;
+      const invoicedQty= invItem.invoicedQty      || 0;
+      const poPrice    = poItem?.unitPrice         || 0;
+      const invPrice   = invItem.unitPrice         || 0;
+
+      const qtyOk   = Math.abs(invoicedQty - receivedQty) <= 0.001;
+      const priceOk = Math.abs(invPrice - poPrice)        <= 0.01;
+
+      const quantityMatch = qtyOk   ? 'MATCHED' : 'QUANTITY_MISMATCH';
+      const priceMatch    = priceOk ? 'MATCHED' : 'PRICE_MISMATCH';
+      let   lineStatus;
+      if      ( qtyOk &&  priceOk) { lineStatus = 'MATCHED'; }
+      else if (!qtyOk && !priceOk) { lineStatus = 'BOTH_MISMATCH';     overallStatus = 'BOTH_MISMATCH'; }
+      else if (!qtyOk)             { lineStatus = 'QUANTITY_MISMATCH'; if (overallStatus === 'MATCHED') overallStatus = 'QUANTITY_MISMATCH'; }
+      else                         { lineStatus = 'PRICE_MISMATCH';    if (overallStatus === 'MATCHED') overallStatus = 'PRICE_MISMATCH'; }
+
+      const qtyVariance   = parseFloat((invoicedQty - receivedQty).toFixed(3));
+      const priceVariance = parseFloat((invPrice    - poPrice).toFixed(4));
+      records.push({
+        ID: cds.utils.uuid(), invoice_ID: ID,
+        purchaseOrder_ID: inv.purchaseOrder_ID, receipt_ID: inv.receipt_ID,
+        invoiceItem_ID: invItem.ID, poItem_ID: poItem?.ID || null, receiptItem_ID: receiptItem?.ID || null,
+        material_ID: invItem.material_ID, poQty, receivedQty, invoicedQty,
+        poUnitPrice: poPrice, invoiceUnitPrice: invPrice,
+        quantityMatch, priceMatch, overallStatus: lineStatus,
+        qtyVariance, priceVariance,
+        valueVariance: parseFloat((qtyVariance * invPrice).toFixed(2)),
+        remarks: [Math.abs(qtyVariance) > 0.001 && `Qty variance: ${qtyVariance}`, Math.abs(priceVariance) > 0.01 && `Price variance: ${priceVariance}`].filter(Boolean).join('; ') || 'Fully matched'
+      });
+    }
+
+    await INSERT.into(this.entities.ThreeWayMatchResults).entries(records);
+    const invoiceStatus = overallStatus === 'MATCHED' ? 'MATCHED' : 'MISMATCH';
+    await UPDATE(this.entities.Invoices).set({ status: invoiceStatus }).where({ ID });
+    return SELECT.one.from(this.entities.Invoices).where({ ID });
+  }
+
+  async _approveInvoice(req) {
+    const { ID } = req.params[0];
+    const inv = await SELECT.one.from(this.entities.Invoices).where({ ID });
+    if (!inv) return req.error(404, `Invoice ${ID} not found`);
+    if (!['MATCHED','MISMATCH','UNDER_REVIEW'].includes(inv.status))
+      return req.error(400, `Invoice must be MATCHED or UNDER_REVIEW to approve. Current: ${inv.status}`);
+    await UPDATE(this.entities.Invoices).set({ status: 'APPROVED', approvalDate: new Date().toISOString() }).where({ ID });
+    // Update project spent amount
+    const po = await SELECT.one.from(cds.entities('solar.epc').PurchaseOrders).where({ ID: inv.purchaseOrder_ID });
+    if (po?.project_ID) await UPDATE(cds.entities('solar.epc').Projects).set({ spentAmount: { '+=': inv.totalAmount } }).where({ ID: po.project_ID });
+    // Update vendor performance
+    const vm = await SELECT.one.from(cds.entities('solar.epc').VendorMaster).where({ ID: inv.vendor_ID });
+    if (vm) await UPDATE(cds.entities('solar.epc').VendorMaster).set({ performanceScore: parseFloat(Math.min(10, (vm.performanceScore || 5) + 0.2).toFixed(2)) }).where({ ID: inv.vendor_ID });
+    return SELECT.one.from(this.entities.Invoices).where({ ID });
+  }
+
+  async _rejectInvoice(req) {
+    const { ID } = req.params[0];
+    const { reason } = req.data;
+    if (!reason) return req.error(400, 'Rejection reason is mandatory');
+    const inv = await SELECT.one.from(this.entities.Invoices).where({ ID });
+    if (!inv) return req.error(404, `Invoice ${ID} not found`);
+    if (['PAID','REJECTED'].includes(inv.status)) return req.error(400, `Cannot reject invoice in status: ${inv.status}`);
+    await UPDATE(this.entities.Invoices).set({ status: 'REJECTED', rejectionReason: reason }).where({ ID });
+    const vm = await SELECT.one.from(cds.entities('solar.epc').VendorMaster).where({ ID: inv.vendor_ID });
+    if (vm) await UPDATE(cds.entities('solar.epc').VendorMaster).set({ performanceScore: parseFloat(Math.max(0, (vm.performanceScore || 5) - 0.3).toFixed(2)) }).where({ ID: inv.vendor_ID });
+    return SELECT.one.from(this.entities.Invoices).where({ ID });
+  }
+
+  async _markPaid(req) {
+    const { ID } = req.params[0];
+    const { paymentReference, paymentDate } = req.data;
+    if (!paymentReference) return req.error(400, 'Payment reference is mandatory', 'paymentReference');
+    const inv = await SELECT.one.from(this.entities.Invoices).where({ ID });
+    if (!inv) return req.error(404, `Invoice ${ID} not found`);
+    if (inv.status !== 'APPROVED') return req.error(400, `Only APPROVED invoices can be marked as paid. Current: ${inv.status}`);
+    await UPDATE(this.entities.Invoices).set({ status: 'PAID', paymentReference, paymentDate: paymentDate || new Date().toISOString().slice(0, 10) }).where({ ID });
+    return SELECT.one.from(this.entities.Invoices).where({ ID });
   }
 
   // ═══════════════════════════════════════════════════════════════

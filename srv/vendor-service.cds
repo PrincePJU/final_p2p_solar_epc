@@ -15,7 +15,21 @@ service VendorService @(path: '/vendor') {
     where isActive = true;
 
   @readonly
+  entity Projects as projection on epc.Projects {
+    ID, projectCode, projectName
+  };
+
+  @cds.redirection.target
+  @readonly
   entity MaterialRequests as projection on epc.MaterialRequests;
+
+  // Filtered view used by the QuotationComparison dropdown — only shows
+  // MRs that are ready for vendor sourcing.
+  @readonly
+  entity ApprovedMaterialRequests as projection on epc.MaterialRequests {
+    *,
+    project : redirected to Projects
+  } where status = 'APPROVED' or status = 'ORDERED';
 
   @readonly
   entity MaterialRequestItems as projection on epc.MaterialRequestItems;

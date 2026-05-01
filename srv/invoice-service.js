@@ -1,6 +1,7 @@
 'use strict';
 
 const cds = require('@sap/cds');
+const ext = require('./integration/ExternalServices');
 
 module.exports = class InvoiceService extends cds.ApplicationService {
 
@@ -162,10 +163,23 @@ module.exports = class InvoiceService extends cds.ApplicationService {
     const poItems = await SELECT.from(PurchaseOrderItems)
       .where({ purchaseOrder_ID: inv.purchaseOrder_ID });
 
-    // Load receipt items
-    const { MaterialReceiptItems } = cds.entities('solar.epc');
-    const receiptItems = await SELECT.from(MaterialReceiptItems)
+    // Load receipt items — prefer CAP local, fall back to RAP GRN
+    const { MaterialReceiptItems, PurchaseOrders } = cds.entities('solar.epc');
+    let receiptItems = await SELECT.from(MaterialReceiptItems)
       .where({ receipt_ID: inv.receipt_ID });
+
+    if (!receiptItems || receiptItems.length === 0) {
+      // ── ONE-WAY PULL: CAP ← RAP (GRN data for 3-way match) ──────
+      const po  = await SELECT.one.from(PurchaseOrders).where({ ID: inv.purchaseOrder_ID });
+      const grn = po?.poNumber ? await ext.fetchGRNFromRAP(po.poNumber) : null;
+      if (grn?.Items?.length > 0) {
+        receiptItems = grn.Items.map(i => ({
+          material_ID : i.MaterialCode,   // best-effort field mapping
+          acceptedQty : i.AcceptedQty || i.ReceivedQty || 0,
+          poItem_ID   : null
+        }));
+      }
+    }
 
     // Clear previous match results
     const { ThreeWayMatchResults } = this.entities;
@@ -284,6 +298,13 @@ module.exports = class InvoiceService extends cds.ApplicationService {
 
     // Update vendor performance score
     await this._updateVendorInvoiceScore(inv.vendor_ID, true);
+
+    // ── ONE-WAY PUSH: CAP → SEGW (mark delivery INVOICED) ────────
+    const { PurchaseOrders } = cds.entities('solar.epc');
+    const po = await SELECT.one.from(PurchaseOrders).where({ ID: inv.purchaseOrder_ID });
+    if (po?.poNumber) {
+      ext.patchDeliveryToInvoicedInSEGW(po.poNumber).catch(() => {});
+    }
 
     return SELECT.one.from(this.entities.Invoices).where({ ID });
   }

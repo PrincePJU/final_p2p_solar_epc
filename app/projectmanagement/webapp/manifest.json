@@ -3,7 +3,11 @@
   "sap.app": {
     "id": "solar.epc.projectmanagement",
     "type": "application",
-    "i18n": "i18n/i18n.properties",
+    "i18n": {
+      "bundleUrl": "i18n/i18n.properties",
+      "supportedLocales": ["en", ""],
+      "fallbackLocale": ""
+    },
     "applicationVersion": {
       "version": "0.0.1"
     },
@@ -31,6 +35,22 @@
           "annotations": [],
           "odataVersion": "4.01"
         }
+      },
+      "invoiceService": {
+        "uri": "/invoice/",
+        "type": "OData",
+        "settings": {
+          "annotations": [],
+          "odataVersion": "4.01"
+        }
+      },
+      "procurementService": {
+        "uri": "/procurement/",
+        "type": "OData",
+        "settings": {
+          "annotations": [],
+          "odataVersion": "4.01"
+        }
       }
     }
   },
@@ -51,7 +71,7 @@
     }
   },
   "sap.ui5": {
-    "flexEnabled": true,
+    "flexEnabled": false,
     "dependencies": {
       "minUI5Version": "1.147.1",
       "libs": {
@@ -68,7 +88,9 @@
       "i18n": {
         "type": "sap.ui.model.resource.ResourceModel",
         "settings": {
-          "bundleName": "solar.epc.projectmanagement.i18n.i18n"
+          "bundleName": "solar.epc.projectmanagement.i18n.i18n",
+          "supportedLocales": ["en", ""],
+          "fallbackLocale": ""
         }
       },
       "": {
@@ -82,6 +104,24 @@
       },
       "vendorService": {
         "dataSource": "vendorService",
+        "preload": true,
+        "settings": {
+          "operationMode": "Server",
+          "autoExpandSelect": true,
+          "earlyRequests": true
+        }
+      },
+      "invoiceService": {
+        "dataSource": "invoiceService",
+        "preload": true,
+        "settings": {
+          "operationMode": "Server",
+          "autoExpandSelect": true,
+          "earlyRequests": true
+        }
+      },
+      "procurementService": {
+        "dataSource": "procurementService",
         "preload": true,
         "settings": {
           "operationMode": "Server",
@@ -157,6 +197,26 @@
           "pattern": "CompareQuotations",
           "name": "QuotationComparison",
           "target": "QuotationComparison"
+        },
+        {
+          "pattern": "Invoices:?query:",
+          "name": "InvoiceList",
+          "target": "InvoiceList"
+        },
+        {
+          "pattern": "Invoices({key}):?query:",
+          "name": "InvoiceObjectPage",
+          "target": "InvoiceObjectPage"
+        },
+        {
+          "pattern": "ApprovedMaterialRequests:?query:",
+          "name": "ProcurementMRList",
+          "target": "ProcurementMRList"
+        },
+        {
+          "pattern": "ApprovedMaterialRequests({key}):?query:",
+          "name": "ProcurementMRDetail",
+          "target": "ProcurementMRDetail"
         },
         {
           "pattern": "MaterialRequests:?query:",
@@ -418,7 +478,6 @@
           "options": {
             "settings": {
               "contextPath": "/VendorMaster",
-              "model": "vendorService",
               "variantManagement": "Page",
               "navigation": {
                 "VendorMaster": {
@@ -447,14 +506,13 @@
           "options": {
             "settings": {
               "contextPath": "/VendorMaster",
-              "model": "vendorService",
               "editableHeaderContent": false,
               "sectionLayout": "Tabs",
               "controlConfiguration": {
                 "@com.sap.vocabularies.UI.v1.Identification": {
                   "actions": {
-                    "DataFieldForAction::VendorService.deactivateVendor": { "visible": true },
-                    "DataFieldForAction::VendorService.activateVendor":   { "visible": true }
+                    "DataFieldForAction::ProjectService.deactivateVendor": { "visible": true },
+                    "DataFieldForAction::ProjectService.activateVendor":   { "visible": true }
                   }
                 }
               }
@@ -508,6 +566,101 @@
                   "actions": {
                     "DataFieldForAction::ProjectService.submitRequest": { "visible": false },
                     "DataFieldForAction::ProjectService.closeRequest":  { "visible": false }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "ProcurementMRList": {
+          "type": "Component",
+          "id": "ProcurementMRList",
+          "name": "sap.fe.templates.ListReport",
+          "options": {
+            "settings": {
+              "contextPath": "/ApprovedMaterialRequests",
+              "variantManagement": "Page",
+              "initialLoad": true,
+              "navigation": {
+                "ApprovedMaterialRequests": {
+                  "detail": { "route": "ProcurementMRDetail" }
+                }
+              },
+              "controlConfiguration": {
+                "@com.sap.vocabularies.UI.v1.LineItem": {
+                  "tableSettings": {
+                    "type": "ResponsiveTable",
+                    "selectionMode": "Single",
+                    "enableExport": true,
+                    "condensedTableLayout": false,
+                    "personalization": { "column": true, "sort": true, "filter": true }
+                  },
+                  "actions": {
+                    "StandardAction::Create": { "visible": false },
+                    "StandardAction::Delete": { "visible": false }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "ProcurementMRDetail": {
+          "type": "Component",
+          "id": "ProcurementMRDetail",
+          "name": "sap.fe.templates.ObjectPage",
+          "options": {
+            "settings": {
+              "contextPath": "/ApprovedMaterialRequests",
+              "editableHeaderContent": false,
+              "sectionLayout": "Tabs"
+            }
+          }
+        },
+        "InvoiceList": {
+          "type": "Component",
+          "id": "InvoiceList",
+          "name": "sap.fe.templates.ListReport",
+          "options": {
+            "settings": {
+              "contextPath": "/Invoices",
+              "variantManagement": "Page",
+              "initialLoad": true,
+              "navigation": {
+                "Invoices": {
+                  "detail": { "route": "InvoiceObjectPage" }
+                }
+              },
+              "controlConfiguration": {
+                "@com.sap.vocabularies.UI.v1.LineItem": {
+                  "tableSettings": {
+                    "type": "ResponsiveTable",
+                    "selectionMode": "Single",
+                    "enableExport": true,
+                    "condensedTableLayout": false,
+                    "personalization": { "column": true, "sort": true, "filter": true }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "InvoiceObjectPage": {
+          "type": "Component",
+          "id": "InvoiceObjectPage",
+          "name": "sap.fe.templates.ObjectPage",
+          "options": {
+            "settings": {
+              "contextPath": "/Invoices",
+              "editableHeaderContent": false,
+              "sectionLayout": "Tabs",
+              "controlConfiguration": {
+                "@com.sap.vocabularies.UI.v1.Identification": {
+                  "actions": {
+                    "DataFieldForAction::InvoiceService.submitInvoice":       { "visible": true },
+                    "DataFieldForAction::InvoiceService.performThreeWayMatch":{ "visible": true },
+                    "DataFieldForAction::InvoiceService.approveInvoice":      { "visible": true },
+                    "DataFieldForAction::InvoiceService.rejectInvoice":       { "visible": true },
+                    "DataFieldForAction::InvoiceService.markPaid":            { "visible": true }
                   }
                 }
               }

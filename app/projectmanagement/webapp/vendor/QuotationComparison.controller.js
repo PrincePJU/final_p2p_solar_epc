@@ -60,73 +60,60 @@ sap.ui.define([
         },
 
         _loadMaterialRequests: function () {
-            const oQCModel = this.getView().getModel("qc");
-
-            const aMockRequests = [
-                {
-                    ID: "5435a2ce-e79b-4f94-93de-76aea6ba0d2b",
-                    requestNumber: "MR-2025-001",
-                    projectName: "Bhadla Solar Park Ph-III",
-                    status: "APPROVED"
-                },
-                {
-                    ID: "6b44c3f1-a12d-4e5f-b8c9-c5f7d9e2a1b3",
-                    requestNumber: "MR-2025-002",
-                    projectName: "Rewa Ultra Mega Solar",
-                    status: "SUBMITTED"
-                },
-                {
-                    ID: "7c55d4g2-b23e-5f6g-c9d0-d6g8e0f3b2c4",
-                    requestNumber: "MR-2025-003",
-                    projectName: "Kamuthi Solar Plant",
-                    status: "APPROVED"
-                }
-            ];
-
+            const oQCModel   = this.getView().getModel("qc");
             const oComponent = this.getOwnerComponent();
-            const oMainModel = oComponent.getModel();
+            // Use vendorService which owns the procurement context and exposes
+            // ApprovedMaterialRequests (filtered to APPROVED/ORDERED server-side).
+            const oVendorModel = oComponent.getModel("vendorService");
 
-            if (!oMainModel) {
-                console.warn("OData model not initialized yet, using test data");
-                oQCModel.setProperty("/materialRequests", aMockRequests);
+            if (!oVendorModel) {
+                console.warn("Vendor service model not ready");
                 return;
             }
 
-            oMainModel.bindList("/MaterialRequests").requestContexts(0, 100)
+            oVendorModel.bindList("/ApprovedMaterialRequests", null, null, null, {
+                $expand: "project($select=ID,projectCode,projectName)"
+            }).requestContexts(0, 200)
+            .then(function (aCtx) {
+                const aMRs = aCtx.map(function (ctx) {
+                    const o = ctx.getObject();
+                    const sProject = o.project
+                        ? (o.project.projectName || o.project.projectCode || "")
+                        : "";
+                    return {
+                        ID           : o.ID,
+                        requestNumber: o.requestNumber || o.ID,
+                        projectName  : sProject,
+                        status       : o.status || "APPROVED"
+                    };
+                });
+                oQCModel.setProperty("/materialRequests", aMRs);
+                if (aMRs.length === 0) {
+                    oQCModel.setProperty("/comparisonMessage",
+                        "No approved material requests found. MRs must be approved by Engineering before quotations can be compared.");
+                    oQCModel.setProperty("/hasQuotations", false);
+                }
+            }.bind(this))
+            .catch(function (oErr) {
+                console.warn("ApprovedMaterialRequests load failed:", oErr.message || oErr);
+                // Fallback: load all MRs and filter client-side
+                oVendorModel.bindList("/MaterialRequests").requestContexts(0, 200)
                 .then(function (aCtx) {
-                    const aMRs = aCtx.map(function (ctx) {
-                        const oObj = ctx.getObject();
-                        return {
-                            ID: oObj.ID,
-                            requestNumber: oObj.requestNumber || oObj.ID,
-                            projectName: "Unknown",
-                            status: oObj.status || "DRAFT"
-                        };
-                    }).filter(function (mr) {
-                        return mr.status === "APPROVED" || mr.status === "SUBMITTED";
-                    });
-
-                    if (aMRs.length > 0) {
-                        oQCModel.setProperty("/materialRequests", aMRs);
-                    } else {
-                        // OData returned data but none matched APPROVED/SUBMITTED status filter
-                        // Show all returned records so the dropdown is not empty
-                        const aAll = aCtx.map(function (ctx) {
-                            const oObj = ctx.getObject();
+                    const aMRs = aCtx
+                        .map(function (ctx) { return ctx.getObject(); })
+                        .filter(function (o) { return o.status === "APPROVED" || o.status === "ORDERED"; })
+                        .map(function (o) {
                             return {
-                                ID: oObj.ID,
-                                requestNumber: oObj.requestNumber || oObj.ID,
-                                projectName: "Unknown",
-                                status: oObj.status || "DRAFT"
+                                ID           : o.ID,
+                                requestNumber: o.requestNumber || o.ID,
+                                projectName  : "",
+                                status       : o.status
                             };
                         });
-                        oQCModel.setProperty("/materialRequests", aAll.length > 0 ? aAll : aMockRequests);
-                    }
+                    oQCModel.setProperty("/materialRequests", aMRs);
                 }.bind(this))
-                .catch(function (oErr) {
-                    console.warn("OData load failed, using test data:", oErr.message);
-                    oQCModel.setProperty("/materialRequests", aMockRequests);
-                }.bind(this));
+                .catch(function () {});
+            }.bind(this));
         },
 
         // ── Navigation ────────────────────────────────────────────────────────

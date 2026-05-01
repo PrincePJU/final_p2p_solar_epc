@@ -1,6 +1,7 @@
 'use strict';
 
 const cds = require('@sap/cds');
+const ext = require('./integration/ExternalServices');
 
 module.exports = class ProcurementService extends cds.ApplicationService {
 
@@ -35,6 +36,10 @@ module.exports = class ProcurementService extends cds.ApplicationService {
 
     // ── PENDING QTY CALCULATION ───────────────────────────────────
     this.after('READ', PurchaseOrderItems, this._derivePendingQty.bind(this));
+
+    // ── LAZY SEGW DELIVERY ENRICHMENT ─────────────────────────────
+    // Merges live SEGW delivery status into PO results (non-blocking, best-effort)
+    this.after('READ', PurchaseOrders, this._enrichWithSEGWDeliveries.bind(this));
 
     await super.init();
   }
@@ -166,6 +171,12 @@ module.exports = class ProcurementService extends cds.ApplicationService {
       .set({ totalOrders: { '+=': 1 } })
       .where({ ID: po.vendor_ID });
 
+    // ── ONE-WAY PUSH: CAP → SEGW (delivery schedule) ─────────────
+    ext.pushDeliveryScheduleToSEGW(po).catch(() => {});
+
+    // ── ONE-WAY PUSH: CAP → RAP (PO context for GRN enablement) ──
+    ext.pushPOToRAP(po, items).catch(() => {});
+
     return SELECT.one.from(this.entities.PurchaseOrders).where({ ID });
   }
 
@@ -272,6 +283,23 @@ module.exports = class ProcurementService extends cds.ApplicationService {
   // ═══════════════════════════════════════════════════════════════
   // INTERNAL HELPERS
   // ═══════════════════════════════════════════════════════════════
+
+  // Lazy-load live delivery data from SEGW and merge into PO results.
+  // Adds `externalDeliveries` virtual field; silent on failure.
+  async _enrichWithSEGWDeliveries(pos) {
+    try {
+      const list = Array.isArray(pos) ? pos : [pos];
+      for (const po of list) {
+        if (!po?.poNumber) continue;
+        const deliveries = await ext.fetchDeliveriesFromSEGW(po.poNumber);
+        if (deliveries.length > 0) {
+          po.externalDeliveries = deliveries;
+        }
+      }
+    } catch (e) {
+      // non-fatal — SEGW may not be reachable in dev
+    }
+  }
 
   async _updatePODeliveryStatus(poId) {
     if (!poId) return;

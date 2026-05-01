@@ -70,6 +70,18 @@ sap.ui.define([], function () {
         MRApprovalDetail: [
             "PROJECT_MANAGER", "MANAGEMENT"
         ],
+        ProcurementMRList: [
+            "PROCUREMENT_OFFICER", "PROJECT_MANAGER", "MANAGEMENT"
+        ],
+        ProcurementMRDetail: [
+            "PROCUREMENT_OFFICER", "PROJECT_MANAGER", "MANAGEMENT"
+        ],
+        InvoiceList: [
+            "FINANCE_OFFICER", "MANAGEMENT"
+        ],
+        InvoiceObjectPage: [
+            "FINANCE_OFFICER", "MANAGEMENT"
+        ],
         EngineerMRObjectPage: [
             "ENGINEER", "MANAGEMENT"
         ],
@@ -93,6 +105,7 @@ sap.ui.define([], function () {
             },
             features: { insightCard: false },
             apps: {
+                approvedMRs:       false,
                 createMR:          false,
                 approveMR:         false,
                 manageVendors:     false,
@@ -115,6 +128,7 @@ sap.ui.define([], function () {
             },
             features: { insightCard: false },
             apps: {
+                approvedMRs:       false,
                 createMR:          true,
                 approveMR:         false,
                 manageVendors:     false,
@@ -137,9 +151,10 @@ sap.ui.define([], function () {
             },
             features: { insightCard: true },
             apps: {
+                approvedMRs:       true,
                 createMR:          false,
                 approveMR:         true,
-                manageVendors:     false,
+                manageVendors:     true,
                 compareQuotations: true,
                 createPO:          false,
                 trackDeliveries:   true,
@@ -151,14 +166,15 @@ sap.ui.define([], function () {
         },
         PROCUREMENT_OFFICER: {
             tiles: {
-                engineeringProjects: true,
+                engineeringProjects: false,
                 procurement:         true,
-                siteOps:             true,
-                vendorRebates:       true,
+                siteOps:             false,
+                vendorRebates:       false,
                 finance:             false
             },
             features: { insightCard: true },
             apps: {
+                approvedMRs:       true,
                 createMR:          false,
                 approveMR:         false,
                 manageVendors:     true,
@@ -181,6 +197,7 @@ sap.ui.define([], function () {
             },
             features: { insightCard: false },
             apps: {
+                approvedMRs:       false,
                 createMR:          false,
                 approveMR:         false,
                 manageVendors:     false,
@@ -203,6 +220,7 @@ sap.ui.define([], function () {
             },
             features: { insightCard: true },
             apps: {
+                approvedMRs:       false,
                 createMR:          false,
                 approveMR:         false,
                 manageVendors:     false,
@@ -225,6 +243,7 @@ sap.ui.define([], function () {
             },
             features: { insightCard: true },
             apps: {
+                approvedMRs:       true,
                 createMR:          true,
                 approveMR:         true,
                 manageVendors:     true,

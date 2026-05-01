@@ -1,16 +1,46 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <mvc:View
+    controllerName="solar.epc.projectmanagement.App"
     xmlns:mvc="sap.ui.core.mvc"
     xmlns:f="sap.f"
+    xmlns="sap.m"
     displayBlock="true">
-    <!--
-        FCL root container.
-        sap.f.routing.Router manages layout changes automatically
-        (OneColumn / TwoColumnsMidExpanded / ThreeColumnsEndExpanded)
-        based on how many targets are active in the current route.
-    -->
-    <f:FlexibleColumnLayout
-        id="fcl"
-        backgroundDesign="Solid"
-        layout="OneColumn" />
+    <App id="app">
+        <Page id="rootPage" showHeader="false" enableScrolling="false">
+            <content>
+                <VBox fitContainer="true" height="100%">
+                    <f:ShellBar
+                        id="shellBar"
+                        title="SAP S/4HANA Cloud, public edition"
+                        secondTitle="Procure to Pay"
+                        homeIcon="sap-icon://sys-monitor"
+                        showCopilot="true"
+                        showSearch="true"
+                        showNotifications="true"
+                        showProductSwitcher="true">
+                        <f:profile>
+                            <f:Avatar initials="MP" press=".onProfilePress" />
+                        </f:profile>
+                    </f:ShellBar>
+                    
+                    <IconTabBar id="anchorBar" expandable="false" applyContentPadding="false" backgroundDesign="Transparent" class="sapUiNoMarginBottom">
+                        <items>
+                            <IconTabFilter text="My Home" key="home" />
+                            <IconTabFilter text="Accounts Payable" key="ap" />
+                            <IconTabFilter text="Inventory Processing" key="ip" />
+                            <IconTabFilter text="Employee - Procurement" key="ep" />
+                        </items>
+                    </IconTabBar>
+
+                    <f:FlexibleColumnLayout
+                        id="fcl"
+                        backgroundDesign="Solid"
+                        layout="OneColumn">
+                        <f:layoutData>
+                            <FlexItemData growFactor="1" baseSize="0" />
+                        </f:layoutData>
+                    </f:FlexibleColumnLayout>
+                </VBox>
+            </content>
+        </Page>
+    </App>
 </mvc:View>

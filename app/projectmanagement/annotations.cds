@@ -477,6 +477,69 @@ annotate service.SeniorActiveProjects with {
   spentAmount    @Common.FieldControl: #ReadOnly;
 }
 
+// ═══════════════════════════════════════════════════════════════
+// APPROVED MATERIAL REQUESTS — Procurement View
+// ═══════════════════════════════════════════════════════════════
+
+annotate service.ApprovedMaterialRequests with @(
+
+  UI.SelectionFields: [ status, project_ID, requiredDate ],
+
+  UI.LineItem: [
+    { $Type: 'UI.DataField', Value: requestNumber,   Label: 'MR Number'    },
+    { $Type: 'UI.DataField', Value: project_ID,      Label: 'Project'      },
+    { $Type: 'UI.DataField', Value: requestDate,     Label: 'Request Date' },
+    { $Type: 'UI.DataField', Value: requiredDate,    Label: 'Required By'  },
+    { $Type: 'UI.DataField', Value: status,          Label: 'Status'       },
+    { $Type: 'UI.DataField', Value: approvedBy_ID,   Label: 'Approved By'  },
+    { $Type: 'UI.DataField', Value: remarks,         Label: 'Remarks'      }
+  ],
+
+  UI.HeaderInfo: {
+    TypeName      : 'Approved Material Request',
+    TypeNamePlural: 'Approved Material Requests',
+    Title         : { Value: requestNumber },
+    Description   : { Value: project_ID }
+  },
+
+  UI.Facets: [
+    {
+      $Type : 'UI.ReferenceFacet',
+      Label : 'Request Details',
+      Target: '@UI.FieldGroup#MRHeader'
+    },
+    {
+      $Type : 'UI.ReferenceFacet',
+      Label : 'Requested Items',
+      Target: 'items/@UI.LineItem'
+    }
+  ],
+
+  UI.FieldGroup#MRHeader: {
+    Label: 'Request Details',
+    Data : [
+      { Value: requestNumber   },
+      { Value: project_ID      },
+      { Value: requestDate     },
+      { Value: requiredDate    },
+      { Value: status          },
+      { Value: approvedBy_ID   },
+      { Value: approvalDate    },
+      { Value: remarks         }
+    ]
+  }
+);
+
+annotate service.ApprovedMaterialRequestItems with @(
+  UI.LineItem: [
+    { $Type: 'UI.DataField', Value: material_ID,  Label: 'Material'      },
+    { $Type: 'UI.DataField', Value: description,  Label: 'Description'   },
+    { $Type: 'UI.DataField', Value: requestedQty, Label: 'Requested Qty' },
+    { $Type: 'UI.DataField', Value: uom,          Label: 'UOM'           },
+    { $Type: 'UI.DataField', Value: remarks,       Label: 'Remarks'      }
+  ]
+);
+
 // ── STATUS DROPDOWN VALUE LIST ────────────────────────────────
 
 annotate service.Projects with {
@@ -881,3 +944,169 @@ annotate service.SeniorActiveProjects_MaterialRequestItems with {
   requestedQty @title: 'Requested Qty' @mandatory;
   uom          @title: 'UOM'           @mandatory;
 }
+
+// ═══════════════════════════════════════════════════════════════
+// VENDOR MASTER — List + Object Page annotations
+// ═══════════════════════════════════════════════════════════════
+
+annotate service.VendorMaster with @(
+  UI.LineItem: [
+    { Value: vendorCode,       Label: 'Vendor Code'      },
+    { Value: vendorName,       Label: 'Vendor Name'      },
+    { Value: gstin,            Label: 'GSTIN'            },
+    { Value: city,             Label: 'City'             },
+    { Value: state,            Label: 'State'            },
+    { Value: contactPerson,    Label: 'Contact Person'   },
+    { Value: phone,            Label: 'Phone'            },
+    { Value: performanceScore, Label: 'Performance Score'},
+    { Value: isActive,         Label: 'Active'           }
+  ],
+  UI.SelectionFields: [ isActive, state, city ],
+  UI.HeaderInfo: {
+    TypeName      : 'Vendor',
+    TypeNamePlural: 'Vendors',
+    Title         : { Value: vendorName },
+    Description   : { Value: vendorCode }
+  },
+  UI.Identification: [
+    { $Type: 'UI.DataFieldForAction', Action: 'ProjectService.deactivateVendor', Label: 'Deactivate' },
+    { $Type: 'UI.DataFieldForAction', Action: 'ProjectService.activateVendor',   Label: 'Activate'   }
+  ],
+  UI.Facets: [
+    { $Type: 'UI.ReferenceFacet', Label: 'General Details',     Target: '@UI.FieldGroup#VendorGeneral' },
+    { $Type: 'UI.ReferenceFacet', Label: 'Bank & Payment',      Target: '@UI.FieldGroup#VendorBanking' },
+    { $Type: 'UI.ReferenceFacet', Label: 'Performance Metrics', Target: '@UI.FieldGroup#VendorPerf'    }
+  ],
+  UI.FieldGroup#VendorGeneral: {
+    Label: 'General Details',
+    Data : [
+      { Value: vendorCode }, { Value: vendorName }, { Value: gstin },
+      { Value: pan        }, { Value: address    }, { Value: city  },
+      { Value: state      }, { Value: pincode    }, { Value: contactPerson },
+      { Value: email      }, { Value: phone      }, { Value: paymentTerms  },
+      { Value: isActive   }
+    ]
+  },
+  UI.FieldGroup#VendorBanking: {
+    Label: 'Bank & Payment',
+    Data : [ { Value: bankAccount }, { Value: bankIFSC }, { Value: paymentTerms } ]
+  },
+  UI.FieldGroup#VendorPerf: {
+    Label: 'Performance',
+    Data : [
+      { Value: performanceScore }, { Value: totalOrders },
+      { Value: onTimeDeliveries }, { Value: qualityScore }
+    ]
+  }
+);
+
+annotate service.VendorMaster with {
+  vendorCode       @title: 'Vendor Code'        @mandatory;
+  vendorName       @title: 'Vendor Name'        @mandatory;
+  gstin            @title: 'GSTIN';
+  pan              @title: 'PAN';
+  address          @title: 'Address';
+  city             @title: 'City';
+  state            @title: 'State';
+  pincode          @title: 'Pincode';
+  contactPerson    @title: 'Contact Person';
+  email            @title: 'Email';
+  phone            @title: 'Phone';
+  bankAccount      @title: 'Bank Account';
+  bankIFSC         @title: 'Bank IFSC';
+  paymentTerms     @title: 'Payment Terms';
+  isActive         @title: 'Active';
+  performanceScore @title: 'Performance Score' @Common.FieldControl: #ReadOnly;
+  totalOrders      @title: 'Total Orders'      @Common.FieldControl: #ReadOnly;
+  onTimeDeliveries @title: 'On-Time Deliveries'@Common.FieldControl: #ReadOnly;
+  qualityScore     @title: 'Quality Score'     @Common.FieldControl: #ReadOnly;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// INVOICES — List + Object Page annotations
+// ═══════════════════════════════════════════════════════════════
+
+annotate service.Invoices with @(
+  UI.LineItem: [
+    { Value: invoiceNumber,    Label: 'Invoice No.'    },
+    { Value: vendorInvoiceNo,  Label: 'Vendor Invoice' },
+    { Value: vendor_ID,        Label: 'Vendor'         },
+    { Value: purchaseOrder_ID, Label: 'PO Number'      },
+    { Value: invoiceDate,      Label: 'Invoice Date'   },
+    { Value: dueDate,          Label: 'Due Date'       },
+    { Value: totalAmount,      Label: 'Total Amount'   },
+    { Value: status,           Label: 'Status'         },
+    { Value: paymentDate,      Label: 'Payment Date'   }
+  ],
+  UI.SelectionFields: [ status, vendor_ID, purchaseOrder_ID, invoiceDate ],
+  UI.HeaderInfo: {
+    TypeName      : 'Invoice',
+    TypeNamePlural: 'Invoices',
+    Title         : { Value: invoiceNumber },
+    Description   : { Value: vendor_ID }
+  },
+  UI.Identification: [
+    { $Type: 'UI.DataFieldForAction', Action: 'ProjectService.submitInvoice',        Label: 'Submit'       },
+    { $Type: 'UI.DataFieldForAction', Action: 'ProjectService.performThreeWayMatch', Label: '3-Way Match'  },
+    { $Type: 'UI.DataFieldForAction', Action: 'ProjectService.approveInvoice',       Label: 'Approve'      },
+    { $Type: 'UI.DataFieldForAction', Action: 'ProjectService.rejectInvoice',        Label: 'Reject'       },
+    { $Type: 'UI.DataFieldForAction', Action: 'ProjectService.markPaid',             Label: 'Mark as Paid' }
+  ],
+  UI.Facets: [
+    { $Type: 'UI.ReferenceFacet', Label: 'Invoice Header',          Target: '@UI.FieldGroup#InvHeader'     },
+    { $Type: 'UI.ReferenceFacet', Label: 'Financial Summary',       Target: '@UI.FieldGroup#InvFinancials' },
+    { $Type: 'UI.ReferenceFacet', Label: 'Approval Details',        Target: '@UI.FieldGroup#InvApproval'   },
+    { $Type: 'UI.ReferenceFacet', Label: 'Invoice Line Items',      Target: 'items/@UI.LineItem'           },
+    { $Type: 'UI.ReferenceFacet', Label: 'Three-Way Match Results', Target: 'threeWayMatches/@UI.LineItem' }
+  ],
+  UI.FieldGroup#InvHeader: {
+    Label: 'Invoice Header',
+    Data : [
+      { Value: invoiceNumber    }, { Value: vendorInvoiceNo  }, { Value: vendor_ID        },
+      { Value: purchaseOrder_ID }, { Value: receipt_ID       }, { Value: invoiceDate      },
+      { Value: dueDate          }, { Value: status           }, { Value: remarks          },
+      { Value: rejectionReason  }
+    ]
+  },
+  UI.FieldGroup#InvFinancials: {
+    Label: 'Financial Summary',
+    Data : [ { Value: currency }, { Value: subtotal }, { Value: taxAmount }, { Value: totalAmount } ]
+  },
+  UI.FieldGroup#InvApproval: {
+    Label: 'Approval Details',
+    Data : [
+      { Value: submittedBy_ID }, { Value: reviewedBy_ID  }, { Value: approvedBy_ID   },
+      { Value: approvalDate   }, { Value: paymentDate    }, { Value: paymentReference }
+    ]
+  }
+);
+
+annotate service.InvoiceItems with @(
+  UI.LineItem: [
+    { Value: lineNumber,  Label: 'Line'        },
+    { Value: material_ID, Label: 'Material'    },
+    { Value: description, Label: 'Description' },
+    { Value: invoicedQty, Label: 'Qty'         },
+    { Value: uom,         Label: 'UOM'         },
+    { Value: unitPrice,   Label: 'Unit Price'  },
+    { Value: taxPercent,  Label: 'Tax %'       },
+    { Value: taxAmount,   Label: 'Tax Amount'  },
+    { Value: totalAmount, Label: 'Line Total'  }
+  ]
+);
+
+annotate service.ThreeWayMatchResults with @(
+  UI.LineItem: [
+    { Value: material_ID,      Label: 'Material'       },
+    { Value: poQty,            Label: 'PO Qty'         },
+    { Value: receivedQty,      Label: 'Received Qty'   },
+    { Value: invoicedQty,      Label: 'Invoiced Qty'   },
+    { Value: poUnitPrice,      Label: 'PO Price'       },
+    { Value: invoiceUnitPrice, Label: 'Invoice Price'  },
+    { Value: quantityMatch,    Label: 'Qty Match'      },
+    { Value: priceMatch,       Label: 'Price Match'    },
+    { Value: overallStatus,    Label: 'Overall Status' },
+    { Value: qtyVariance,      Label: 'Qty Variance'   },
+    { Value: valueVariance,    Label: 'Value Variance' }
+  ]
+);

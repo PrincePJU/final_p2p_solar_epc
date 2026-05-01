@@ -8,6 +8,7 @@ module.exports = class VendorService extends cds.ApplicationService {
     const { VendorMaster, VendorQuotations, VendorQuotationItems } = this.entities;
 
     // ── AUTO-NUMBERING ────────────────────────────────────────────
+    this.before('CREATE', VendorMaster,         this._generateVendorCode.bind(this));
     this.before('CREATE', VendorQuotations,     this._generateQuotationNumber.bind(this));
 
     // ── ITEM CALCULATIONS ─────────────────────────────────────────
@@ -37,6 +38,25 @@ module.exports = class VendorService extends cds.ApplicationService {
   // ═══════════════════════════════════════════════════════════════
   // AUTO-NUMBERING
   // ═══════════════════════════════════════════════════════════════
+
+  async _generateVendorCode(req) {
+    if (req.data.vendorCode) return; // don't overwrite if caller set it explicitly
+    const year = new Date().getFullYear();
+    const result = await SELECT.one.from(this.entities.VendorMaster)
+      .columns('vendorCode')
+      .orderBy('createdAt desc');
+    let seq = 1;
+    if (result?.vendorCode) {
+      const match = result.vendorCode.match(/VND-\d{4}-(\d{4})$/);
+      if (match) seq = parseInt(match[1]) + 1;
+    }
+    req.data.vendorCode        = `VND-${year}-${String(seq).padStart(4, '0')}`;
+    req.data.isActive          = req.data.isActive ?? true;
+    req.data.performanceScore  = req.data.performanceScore  ?? 0;
+    req.data.totalOrders       = req.data.totalOrders       ?? 0;
+    req.data.onTimeDeliveries  = req.data.onTimeDeliveries  ?? 0;
+    req.data.qualityScore      = req.data.qualityScore      ?? 0;
+  }
 
   async _generateQuotationNumber(req) {
     const year = new Date().getFullYear();

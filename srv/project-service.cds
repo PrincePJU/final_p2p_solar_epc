@@ -6,7 +6,7 @@ using solar.epc as epc from '../db/schema';
 // Roles: Engineer, Project Manager, Management
 // ═══════════════════════════════════════════════════════════════
 
-@requires: ['BDM','Engineer','ProjectManager','Management','ProcurementOfficer']
+@requires: ['BDM','Engineer','ProjectManager','Management','ProcurementOfficer','FinanceOfficer']
 service ProjectService @(path: '/project') {
 
   // ── READ-ONLY REFERENCES ──────────────────────────────────────
@@ -233,21 +233,119 @@ service ProjectService @(path: '/project') {
     boqItem  : redirected to BOQItems
   };
 
+  // ── APPROVED MRs — Procurement entry point ───────────────────
+  // Read-only view of all APPROVED/ORDERED MRs so Procurement
+  // Officers can see what engineering has approved and act on it.
+  @readonly
+  @restrict: [
+    { grant: ['READ'], to: ['ProcurementOfficer','ProjectManager','Management','BDM'] }
+  ]
+  entity ApprovedMaterialRequests as projection on epc.MaterialRequests {
+    *,
+    project     : redirected to Projects,
+    requestedBy : redirected to Users,
+    approvedBy  : redirected to Users,
+    items       : redirected to ApprovedMaterialRequestItems,
+    virtual criticality : Integer
+  } where status = 'APPROVED' or status = 'ORDERED';
+
+  @readonly
+  entity ApprovedMaterialRequestItems as projection on epc.MaterialRequestItems {
+    *,
+    request  : redirected to ApprovedMaterialRequests,
+    material : redirected to MaterialMaster,
+    boqItem  : redirected to BOQItems
+  };
+
   // ── VENDOR QUOTATIONS (read-only from project context) ────────
   @readonly
+  @cds.redirection.target
   entity VendorQuotations as projection on epc.VendorQuotations {
     *,
     materialRequest: redirected to MaterialRequests,
-    items: redirected to VendorQuotationItems
+    vendor         : redirected to VendorMaster,
+    items          : redirected to VendorQuotationItems
   };
 
   @readonly
   @cds.redirection.target
   entity VendorQuotationItems as projection on epc.VendorQuotationItems {
     *,
-    quotation: redirected to VendorQuotations,
-    requestItem: redirected to MaterialRequestItems,
-    material: redirected to MaterialMaster
+    quotation   : redirected to VendorQuotations,
+    requestItem : redirected to MaterialRequestItems,
+    material    : redirected to MaterialMaster
+  };
+
+  // ── VENDOR MASTER ─────────────────────────────────────────────
+  @restrict: [
+    { grant: ['READ'],                     to: ['BDM','Engineer','ProjectManager','Management','ProcurementOfficer','FinanceOfficer'] },
+    { grant: ['CREATE','UPDATE','DELETE'], to: ['ProcurementOfficer','Management'] },
+    { grant: ['activateVendor','deactivateVendor'], to: ['ProcurementOfficer','Management'] }
+  ]
+  entity VendorMaster as projection on epc.VendorMaster
+  actions {
+    action deactivateVendor() returns VendorMaster;
+    action activateVendor()   returns VendorMaster;
+  };
+
+  @readonly
+  entity VendorPerformanceLog as projection on epc.VendorPerformanceLog {
+    *,
+    vendor : redirected to VendorMaster
+  };
+
+  // ── PURCHASE ORDERS & RECEIPTS (read-only references) ─────────
+  @readonly
+  entity PurchaseOrders as projection on epc.PurchaseOrders;
+
+  @readonly
+  entity PurchaseOrderItems as projection on epc.PurchaseOrderItems;
+
+  @readonly
+  entity MaterialReceipts as projection on epc.MaterialReceipts;
+
+  @readonly
+  entity MaterialReceiptItems as projection on epc.MaterialReceiptItems;
+
+  // ── INVOICES ──────────────────────────────────────────────────
+  @odata.draft.enabled
+  @restrict: [
+    { grant: ['READ','CREATE','UPDATE','DELETE'], to: ['FinanceOfficer','Management'] },
+    { grant: ['submitInvoice','performThreeWayMatch','approveInvoice','rejectInvoice','markPaid'], to: ['FinanceOfficer','Management'] }
+  ]
+  entity Invoices as projection on epc.Invoices {
+    *,
+    vendor         : redirected to VendorMaster,
+    purchaseOrder  : redirected to PurchaseOrders,
+    receipt        : redirected to MaterialReceipts,
+    submittedBy    : redirected to Users,
+    reviewedBy     : redirected to Users,
+    approvedBy     : redirected to Users,
+    items          : redirected to InvoiceItems,
+    threeWayMatches: redirected to ThreeWayMatchResults
+  } actions {
+    action submitInvoice()                                              returns Invoices;
+    action performThreeWayMatch()                                       returns Invoices;
+    action approveInvoice()                                             returns Invoices;
+    action rejectInvoice(reason: String(500))                          returns Invoices;
+    action markPaid(paymentReference: String(50), paymentDate: Date)   returns Invoices;
+  };
+
+  entity InvoiceItems as projection on epc.InvoiceItems {
+    *,
+    invoice     : redirected to Invoices,
+    poItem      : redirected to PurchaseOrderItems,
+    receiptItem : redirected to MaterialReceiptItems,
+    material    : redirected to MaterialMaster
+  };
+
+  @readonly
+  entity ThreeWayMatchResults as projection on epc.ThreeWayMatchResults {
+    *,
+    invoice      : redirected to Invoices,
+    purchaseOrder: redirected to PurchaseOrders,
+    receipt      : redirected to MaterialReceipts,
+    material     : redirected to MaterialMaster
   };
 }
 

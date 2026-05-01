@@ -1,4 +1,4 @@
-ID;vendorCode;vendorName;isActive;performanceScore;totalOrders;onTimeDeliveries;qualityScore
-6fbd9607-d515-4fd9-8cf4-0ee22eb9b522;VND-1001;SunTech Solar Ltd;true;8.5;12;11;8.2
-b1f22af5-8632-4f0c-9618-2bd4de92d5cd;VND-1002;PowerGrid Equipments;true;7.2;8;6;7.0
-8a6026c4-5ce1-41fa-9a45-c135bd97f0a7;VND-1003;GreenWatt India;true;9.1;25;24;9.0
+ID;vendorCode;vendorName;gstin;pan;address;city;state;pincode;contactPerson;email;phone;bankAccount;bankIFSC;paymentTerms;isActive;performanceScore;totalOrders;onTimeDeliveries;qualityScore
+6fbd9607-d515-4fd9-8cf4-0ee22eb9b522;VND-1001;SunTech Solar Ltd;27AABCS1234F1ZX;AABCS1234F;Plot 12, MIDC Industrial Area;Pune;Maharashtra;411019;Rajesh Sharma;rajesh@suntechsolar.com;+91-9876543210;50123456789;HDFC0001234;Net 30;true;8.50;12;11;8.20
+b1f22af5-8632-4f0c-9618-2bd4de92d5cd;VND-1002;PowerGrid Equipments;06AABCP5678G1ZY;AABCP5678G;A-45, Sector 62, Noida;Noida;Uttar Pradesh;201309;Priya Mehta;priya@powergrid.com;+91-9988776655;60234567890;ICIC0002345;Net 45;true;7.20;8;6;7.00
+8a6026c4-5ce1-41fa-9a45-c135bd97f0a7;VND-1003;GreenWatt India;29AABCG9012H1ZZ;AABCG9012H;No. 7, Electronics City Phase 1;Bengaluru;Karnataka;560100;Suresh Kumar;suresh@greenwatt.in;+91-9123456780;70345678901;SBIN0003456;Net 60;true;9.10;25;24;9.00
