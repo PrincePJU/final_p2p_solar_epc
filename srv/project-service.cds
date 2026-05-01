@@ -28,7 +28,8 @@ service ProjectService @(path: '/project') {
     { grant: ['READ'],   to: ['Engineer','ProjectManager'], where: 'status = ''ACTIVE''' },
     { grant: ['CREATE','UPDATE','DELETE'], to: ['BDM','Management'] },
     { grant: ['UPDATE'], to: ['Engineer'], where: 'status = ''ACTIVE''' },
-    { grant: ['activateProject','putOnHold','completeProject','cancelProject'], to: ['BDM','Management'] }
+    { grant: ['activateProject','completeProject','cancelProject'], to: ['BDM','Management'] },
+    { grant: ['putOnHold'], to: ['Management'] }
   ]
   entity Projects as projection on epc.Projects {
     *,
