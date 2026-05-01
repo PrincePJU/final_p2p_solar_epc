@@ -14,6 +14,36 @@ sap.ui.define([], function () {
         MANAGEMENT:          "MANAGEMENT"
     };
 
+    const CAP_TO_UI_ROLE = {
+        BDM:                 ROLES.BDM,
+        Engineer:            ROLES.ENGINEER,
+        ProjectManager:      ROLES.PROJECT_MANAGER,
+        ProcurementOfficer:  ROLES.PROCUREMENT_OFFICER,
+        SiteEngineer:        ROLES.SITE_ENGINEER,
+        FinanceOfficer:      ROLES.FINANCE_OFFICER,
+        Management:          ROLES.MANAGEMENT
+    };
+
+    const UI_TO_CAP_ROLE = {
+        BDM:                 "BDM",
+        ENGINEER:            "Engineer",
+        PROJECT_MANAGER:     "ProjectManager",
+        PROCUREMENT_OFFICER: "ProcurementOfficer",
+        SITE_ENGINEER:       "SiteEngineer",
+        FINANCE_OFFICER:     "FinanceOfficer",
+        MANAGEMENT:          "Management"
+    };
+
+    const ROLE_PRIORITY = [
+        ROLES.MANAGEMENT,
+        ROLES.PROJECT_MANAGER,
+        ROLES.PROCUREMENT_OFFICER,
+        ROLES.FINANCE_OFFICER,
+        ROLES.SITE_ENGINEER,
+        ROLES.ENGINEER,
+        ROLES.BDM
+    ];
+
     const ROLE_DISPLAY = {
         BDM:                 "Business Development Manager",
         ENGINEER:            "Engineer",
@@ -74,6 +104,18 @@ sap.ui.define([], function () {
             "PROCUREMENT_OFFICER", "PROJECT_MANAGER", "MANAGEMENT"
         ],
         ProcurementMRDetail: [
+            "PROCUREMENT_OFFICER", "PROJECT_MANAGER", "MANAGEMENT"
+        ],
+        GRNList: [
+            "SITE_ENGINEER", "PROCUREMENT_OFFICER", "PROJECT_MANAGER", "MANAGEMENT"
+        ],
+        GRNObjectPage: [
+            "SITE_ENGINEER", "PROCUREMENT_OFFICER", "PROJECT_MANAGER", "MANAGEMENT"
+        ],
+        POList: [
+            "PROCUREMENT_OFFICER", "PROJECT_MANAGER", "MANAGEMENT"
+        ],
+        POObjectPage: [
             "PROCUREMENT_OFFICER", "PROJECT_MANAGER", "MANAGEMENT"
         ],
         InvoiceList: [
@@ -374,6 +416,37 @@ sap.ui.define([], function () {
     // ── Public API ──────────────────────────────────────────────────────────────
     return {
         ROLES: ROLES,
+
+        toUiRole: function (sCapRole) {
+            return CAP_TO_UI_ROLE[sCapRole] || sCapRole;
+        },
+
+        toCapRole: function (sUiRole) {
+            return UI_TO_CAP_ROLE[sUiRole] || sUiRole;
+        },
+
+        parseRoleList: function (sRoles) {
+            if (Array.isArray(sRoles)) {
+                return sRoles.filter(Boolean);
+            }
+            return String(sRoles || "")
+                .split(",")
+                .map(function (sRole) { return sRole.trim(); })
+                .filter(Boolean);
+        },
+
+        getPrimaryRole: function (aUiRoles) {
+            const aRoles = this.parseRoleList(aUiRoles);
+            return ROLE_PRIORITY.find(function (sRole) {
+                return aRoles.indexOf(sRole) !== -1;
+            }) || aRoles[0] || ROLES.MANAGEMENT;
+        },
+
+        getRoleOptions: function (aUiRoles) {
+            return this.parseRoleList(aUiRoles).map(function (sRole) {
+                return { key: sRole, text: ROLE_DISPLAY[sRole] || sRole };
+            });
+        },
 
         getDisplayName: function (sRole) {
             return ROLE_DISPLAY[sRole] || sRole;

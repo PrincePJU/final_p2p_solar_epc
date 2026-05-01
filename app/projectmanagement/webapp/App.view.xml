@@ -13,6 +13,8 @@
                         title="SAP S/4HANA Cloud, public edition"
                         secondTitle="Procure to Pay"
                         homeIcon="sap-icon://sys-monitor"
+                        showNavButton="{app>/showBackButton}"
+                        navButtonPressed=".onBackPress"
                         showCopilot="true"
                         showSearch="true"
                         showNotifications="true"

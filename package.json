@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "dependencies": {
     "@sap/cds": "^9",
-    "express": "^4"
+    "express": "^4",
+    "@sap/xssec": "^4"
   },
   "devDependencies": {
     "@cap-js/sqlite": "^2",
@@ -18,12 +19,20 @@
     "watch-projectmanagement": "cds watch --open solar.epc.projectmanagement/index.html?sap-ui-xx-viewCache=false --livereload false"
   },
   "cds": {
-    "fiori": { "bypass_draft": true },
+    "fiori": {
+      "bypass_draft": true
+    },
     "requires": {
       "db": {
         "kind": "sqlite",
         "credentials": {
           "database": "solar_epc.db"
+        }
+      },
+      "[production]": {
+        "auth": {
+          "kind": "xsuaa",
+          "users": {}
         }
       }
     },

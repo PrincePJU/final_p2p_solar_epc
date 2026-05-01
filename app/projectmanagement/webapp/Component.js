@@ -1,8 +1,9 @@
 sap.ui.define([
     "sap/fe/core/AppComponent",
     "sap/ui/model/json/JSONModel",
+    "sap/ui/core/routing/HashChanger",
     "solar/epc/projectmanagement/service/RoleService"
-], function (AppComponent, JSONModel, RoleService) {
+], function (AppComponent, JSONModel, HashChanger, RoleService) {
     "use strict";
 
     return AppComponent.extend("solar.epc.projectmanagement.Component", {
@@ -13,13 +14,19 @@ sap.ui.define([
         init: function () {
             AppComponent.prototype.init.apply(this, arguments);
 
-            const sStoredRole = sessionStorage.getItem("currentRole") || RoleService.ROLES.MANAGEMENT;
-            const bLoggedIn = sessionStorage.getItem("loggedIn") === "true";
-
             const oSessionModel = new JSONModel({
-                currentRole: sStoredRole,
-                userName: sessionStorage.getItem("userName") || "",
-                loggedIn: bLoggedIn,
+                authPending: false,
+                authMode: "",
+                isLocalSimulation: false,
+                canSwitchRole: false,
+                currentRole: RoleService.ROLES.MANAGEMENT,
+                availableRoles: [],
+                capRoles: [],
+                uiRoles: [],
+                userId: "",
+                userName: "",
+                email: "",
+                loggedIn: false,
                 unauthorized: false,
                 lastDeniedRoute: ""
             });
@@ -29,25 +36,89 @@ sap.ui.define([
         },
 
         _getDefaultRouteForRole: function (sRole) {
-            switch (sRole) {
-            case RoleService.ROLES.BDM:
-                return "ProjectsList";
-            case RoleService.ROLES.ENGINEER:
-                return "EngineeringProjectsList";
-            case RoleService.ROLES.PROJECT_MANAGER:
-                return "MRApprovalDashboard";
-            case RoleService.ROLES.PROCUREMENT_OFFICER:
-                return "VendorList";
-            default:
-                return "HomePage";
-            }
+            return "HomePage";
+        },
+
+        loginWithCredentials: function (sUsername, sPassword) {
+            const sAuthHeader = "Basic " + window.btoa(sUsername + ":" + sPassword);
+            return this._loadSession(sAuthHeader);
+        },
+
+        _loadSession: function (sAuthHeader) {
+            const oSessionModel = this.getModel("session");
+            const oHeaders = sAuthHeader ? { Authorization: sAuthHeader } : {};
+
+            oSessionModel.setProperty("/authPending", true);
+
+            return fetch("/auth/me()", { headers: oHeaders })
+                .then(function (oResponse) {
+                    if (!oResponse.ok) {
+                        throw new Error("Session request failed with HTTP " + oResponse.status);
+                    }
+                    return oResponse.json();
+                })
+                .then(function (oPayload) {
+                    const oSession = oPayload.value || oPayload;
+                    const aUiRoles = RoleService.parseRoleList(oSession.uiRoles);
+                    const aCapRoles = RoleService.parseRoleList(oSession.capRoles);
+                    const sCurrentRole = oSession.currentRole || RoleService.getPrimaryRole(aUiRoles);
+
+                    if (sAuthHeader && oSession.isLocalSimulation) {
+                        this._applyAuthorizationHeader(sAuthHeader);
+                    }
+
+                    oSessionModel.setData({
+                        authPending: false,
+                        authMode: oSession.authMode || "",
+                        isLocalSimulation: !!oSession.isLocalSimulation,
+                        canSwitchRole: !!oSession.canSwitchRole,
+                        currentRole: sCurrentRole,
+                        availableRoles: RoleService.getRoleOptions(aUiRoles.length ? aUiRoles : [sCurrentRole]),
+                        capRoles: aCapRoles,
+                        uiRoles: aUiRoles,
+                        userId: oSession.userId || "",
+                        userName: oSession.userName || oSession.userId || "User",
+                        email: oSession.email || "",
+                        loggedIn: true,
+                        unauthorized: false,
+                        lastDeniedRoute: ""
+                    });
+
+                    const oHashChanger = HashChanger.getInstance();
+                    const sHash = oHashChanger.getHash();
+                    if (!sHash || sHash === "LoginPage") {
+                        this.getRouter().navTo(this._getDefaultRouteForRole(sCurrentRole), {}, true);
+                    } else {
+                        this.getRouter().parse(sHash);
+                    }
+                }.bind(this))
+                .catch(function (oError) {
+                    oSessionModel.setProperty("/authPending", false);
+                    oSessionModel.setProperty("/loggedIn", false);
+                    this.getRouter().navTo("LoginPage", {}, true);
+                    throw oError;
+                }.bind(this));
+        },
+
+        _applyAuthorizationHeader: function (sAuthHeader) {
+            ["", "vendorService", "invoiceService", "procurementService"].forEach(function (sModelName) {
+                const oModel = sModelName ? this.getModel(sModelName) : this.getModel();
+                if (oModel && typeof oModel.changeHttpHeaders === "function") {
+                    oModel.changeHttpHeaders({ Authorization: sAuthHeader });
+                }
+            }.bind(this));
         },
 
         _onBeforeRouteMatched: function (oEvent) {
             const sRouteName = oEvent.getParameter("name");
             const oSessionModel = this.getModel("session");
+            const bAuthPending = oSessionModel.getProperty("/authPending");
             const bLoggedIn = oSessionModel.getProperty("/loggedIn");
             const sRole = oSessionModel.getProperty("/currentRole");
+
+            if (bAuthPending) {
+                return;
+            }
 
             if (sRouteName === "LoginPage") {
                 oSessionModel.setProperty("/unauthorized", false);
@@ -55,11 +126,6 @@ sap.ui.define([
                 if (bLoggedIn) {
                     this.getRouter().navTo(this._getDefaultRouteForRole(sRole), {}, true);
                 }
-                return;
-            }
-
-            if (sRouteName === "QuotationComparison") {
-                oSessionModel.setProperty("/unauthorized", false);
                 return;
             }
 

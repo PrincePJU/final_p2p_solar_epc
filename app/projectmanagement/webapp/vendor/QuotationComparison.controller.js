@@ -119,8 +119,11 @@ sap.ui.define([
         // ── Navigation ────────────────────────────────────────────────────────
 
         onNavBack: function () {
-            const oRouter = this.getOwnerComponent().getRouter();
-            oRouter.navTo("QuotationList");
+            if (window.history.length > 1) {
+                window.history.back();
+                return;
+            }
+            this.getOwnerComponent().getRouter().navTo("HomePage");
         },
 
         onNavHome: function () {

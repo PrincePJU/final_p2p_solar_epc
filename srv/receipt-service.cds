@@ -70,6 +70,10 @@ service ReceiptService @(path: '/receipt') {
 // ─── ANNOTATIONS: MATERIAL RECEIPTS ───────────────────────────
 
 annotate ReceiptService.MaterialReceipts with @(
+  UI.Identification: [
+    { $Type: 'UI.DataFieldForAction', Action: 'ReceiptService.verifyReceipt', Label: 'Verify Receipt'  },
+    { $Type: 'UI.DataFieldForAction', Action: 'ReceiptService.rejectReceipt', Label: 'Reject Receipt'  }
+  ],
   UI.LineItem: [
     { Value: receiptNumber,   Label: 'GRN Number'      },
     { Value: delivery_ID,     Label: 'Delivery'        },
@@ -136,6 +140,11 @@ annotate ReceiptService.MaterialReceiptItems with @(
 );
 
 annotate ReceiptService.DamagedMaterials with @(
+  UI.Identification: [
+    { $Type: 'UI.DataFieldForAction', Action: 'ReceiptService.raiseClaim',  Label: 'Raise Claim'   },
+    { $Type: 'UI.DataFieldForAction', Action: 'ReceiptService.settleClaim', Label: 'Settle Claim'  },
+    { $Type: 'UI.DataFieldForAction', Action: 'ReceiptService.rejectClaim', Label: 'Reject Claim'  }
+  ],
   UI.LineItem: [
     { Value: material_ID,   Label: 'Material'      },
     { Value: damagedQty,    Label: 'Damaged Qty'   },
