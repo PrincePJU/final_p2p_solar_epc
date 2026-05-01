@@ -37,7 +37,7 @@
                                     <Label id="lblUsername" text="Username" class="roleLabel" />
                                     <Input
                                         id="inputUsername"
-                                        placeholder="Enter your username"
+                                        placeholder="engineer1"
                                         value="{login>/username}"
                                         class="sapUiTinyMarginBottom" />
 
@@ -45,21 +45,21 @@
                                     <Input
                                         id="inputPassword"
                                         type="Password"
-                                        placeholder="Enter your password"
+                                        placeholder="pass"
                                         value="{login>/password}"
                                         submit="onLoginPress"
                                         class="sapUiTinyMarginBottom" />
 
                                     <MessageStrip
                                         id="demoStrip"
-                                        text="Demo mode - select a role to log in as."
+                                        text="Local: use a mocked user such as engineer1 / pass. BTP: leave fields empty and continue after XSUAA sign-in."
                                         type="Information"
                                         showIcon="true"
                                         showCloseButton="false"
                                         class="sapUiTinyMarginBottom sapUiTinyMarginTop" />
 
-                                    <Label id="loginLblRole" text="Role" class="roleLabel sapUiTinyMarginTop" />
-                                    <Select id="loginRoleSelect" selectedKey="{login>/selectedRole}" width="100%">
+                                    <Label id="loginLblRole" text="Role" class="roleLabel sapUiTinyMarginTop" visible="false" />
+                                    <Select id="loginRoleSelect" selectedKey="{login>/selectedRole}" width="100%" visible="false">
                                         <core:Item id="loginRoleItemBDM" key="BDM" text="Business Development Manager" />
                                         <core:Item id="loginRoleItemEngineer" key="ENGINEER" text="Engineer" />
                                         <core:Item id="loginRoleItemSenior" key="PROJECT_MANAGER" text="Senior Engineer" />
@@ -71,7 +71,7 @@
 
                                     <Button
                                         id="btnLogin"
-                                        text="Sign In"
+                                        text="Continue"
                                         type="Emphasized"
                                         press="onLoginPress"
                                         class="loginBtn" />

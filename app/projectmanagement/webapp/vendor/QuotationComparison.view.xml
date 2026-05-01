@@ -8,7 +8,7 @@
     xmlns:layout="sap.ui.layout"
     displayBlock="true">
 
-    <Page id="page" title="Compare Vendor Quotations" showNavButton="true" navButtonPress="onNavHome" backgroundDesign="List">
+    <Page id="page" title="Compare Vendor Quotations" showNavButton="true" navButtonPress="onNavBack" backgroundDesign="List">
 
         <!-- Header: Select Material Request -->
         <headerContent>

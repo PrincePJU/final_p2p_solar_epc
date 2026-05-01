@@ -19,82 +19,87 @@
         "destination": "SOLAR_EPC_SEGW",
         "path": "/sap/opu/odata/sap/ZSOLAR_DELIVERY_SRV/"
       }
-    },
-    "auth": {
-      "kind": "mocked",
-      "users": {
-        "engineer1": {
-          "password": "pass",
-          "roles": [
-            "Engineer"
-          ],
-          "attr": {
-            "name": "Rajesh Kumar"
+    }
+  },
+  "[development]": {
+    "requires": {
+      "auth": {
+        "kind": "mocked",
+        "users": {
+          "engineer1": {
+            "password": "pass",
+            "roles": [
+              "Engineer"
+            ],
+            "attr": {
+              "name": "Rajesh Kumar"
+            }
+          },
+          "pm1": {
+            "password": "pass",
+            "roles": [
+              "ProjectManager"
+            ],
+            "attr": {
+              "name": "Priya Sharma"
+            }
+          },
+          "proc1": {
+            "password": "pass",
+            "roles": [
+              "ProcurementOfficer"
+            ],
+            "attr": {
+              "name": "Amit Patel"
+            }
+          },
+          "site1": {
+            "password": "pass",
+            "roles": [
+              "SiteEngineer"
+            ],
+            "attr": {
+              "name": "Suresh Singh"
+            }
+          },
+          "finance1": {
+            "password": "pass",
+            "roles": [
+              "FinanceOfficer"
+            ],
+            "attr": {
+              "name": "Meena Iyer"
+            }
+          },
+          "mgmt1": {
+            "password": "pass",
+            "roles": [
+              "Management",
+              "ProjectManager",
+              "ProcurementOfficer",
+              "FinanceOfficer"
+            ],
+            "attr": {
+              "name": "Vikram Mehta"
+            }
+          },
+          "admin": {
+            "password": "admin",
+            "roles": [
+              "*"
+            ]
+          },
+          "priyanshu.uict22@sot.pdpu.ac.in": {
+            "password": "pass",
+            "roles": [
+              "Engineer",
+              "ProjectManager",
+              "Management",
+              "ProcurementOfficer",
+              "SiteEngineer",
+              "FinanceOfficer"
+            ]
           }
-        },
-        "pm1": {
-          "password": "pass",
-          "roles": [
-            "ProjectManager"
-          ],
-          "attr": {
-            "name": "Priya Sharma"
-          }
-        },
-        "proc1": {
-          "password": "pass",
-          "roles": [
-            "ProcurementOfficer"
-          ],
-          "attr": {
-            "name": "Amit Patel"
-          }
-        },
-        "site1": {
-          "password": "pass",
-          "roles": [
-            "SiteEngineer"
-          ],
-          "attr": {
-            "name": "Suresh Singh"
-          }
-        },
-        "finance1": {
-          "password": "pass",
-          "roles": [
-            "FinanceOfficer"
-          ],
-          "attr": {
-            "name": "Meena Iyer"
-          }
-        },
-        "mgmt1": {
-          "password": "pass",
-          "roles": [
-            "Management",
-            "ProjectManager",
-            "ProcurementOfficer",
-            "FinanceOfficer"
-          ],
-          "attr": {
-            "name": "Vikram Mehta"
-          }
-        },
-        "admin": {
-          "password": "admin",
-          "roles": [
-            "*"
-          ]
-        },
-        "priyanshu.uict22@sot.pdpu.ac.in": {
-          "roles": [
-            "Engineer",
-            "ProjectManager",
-            "Management",
-            "ProcurementOfficer",
-            "SiteEngineer",
-            "FinanceOfficer"
-          ]
         }
       }
     }

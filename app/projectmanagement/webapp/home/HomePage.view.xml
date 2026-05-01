@@ -149,7 +149,11 @@
                     <HBox alignItems="Center">
                         <Button id="btnSearch" icon="sap-icon://search" tooltip="Search" type="Transparent" class="sapUiSmallMarginEnd" />
                         <Button id="btnBell" icon="sap-icon://bell" tooltip="Notifications" type="Transparent" class="sapUiSmallMarginEnd" />
-                        <Select id="roleSelect" selectedKey="{view>/currentRole}" change="onRoleChange" tooltip="Demo: Switch Role">
+                        <Select
+                            id="roleSelect"
+                            selectedKey="{view>/currentRole}"
+                            change="onRoleChange"
+                            tooltip="Temporary demo: switch role">
                             <items>
                                 <core:Item key="BDM" text="BDM" />
                                 <core:Item key="ENGINEER" text="Engineer" />
