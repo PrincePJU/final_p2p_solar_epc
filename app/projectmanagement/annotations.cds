@@ -795,8 +795,48 @@ annotate service.ActiveProjects_MaterialRequests with @(
       Label            : 'Status',
       ![@UI.Importance]: #High
     },
-    { $Type: 'UI.DataField', Value: remarks,        Label: 'Remarks',    ![@UI.Importance]: #Low    }
-  ]
+    { $Type: 'UI.DataField', Value: remarks, Label: 'Remarks', ![@UI.Importance]: #Low }
+  ],
+
+  // Object-page annotations for EngineerMRObjectPage
+  UI.HeaderInfo: {
+    TypeName       : 'Material Request',
+    TypeNamePlural : 'Material Requests',
+    Title          : { $Type: 'UI.DataField', Value: requestNumber },
+    Description    : { $Type: 'UI.DataField', Value: status }
+  },
+
+  UI.Identification: [
+    { $Type: 'UI.DataFieldForAction', Action: 'ProjectService.submitRequest', Label: 'Submit' }
+  ],
+
+  UI.Facets: [
+    {
+      $Type  : 'UI.ReferenceFacet',
+      ID     : 'APMRGeneralInfo',
+      Target : '@UI.FieldGroup#APMRGeneralInfo',
+      Label  : 'General Information'
+    },
+    {
+      $Type  : 'UI.ReferenceFacet',
+      ID     : 'APMRItems',
+      Target : 'items/@UI.LineItem',
+      Label  : 'Items'
+    }
+  ],
+
+  UI.FieldGroup#APMRGeneralInfo: {
+    Label: 'General Information',
+    Data: [
+      { $Type: 'UI.DataField', Value: requestNumber,  Label: 'Request Number' },
+      { $Type: 'UI.DataField', Value: requestDate,    Label: 'Request Date'   },
+      { $Type: 'UI.DataField', Value: requiredDate,   Label: 'Required By'   },
+      { $Type: 'UI.DataField', Value: status,         Label: 'Status'        },
+      { $Type: 'UI.DataField', Value: requestedBy_ID, Label: 'Requested By'  },
+      { $Type: 'UI.DataField', Value: approvedBy_ID,  Label: 'Approved By'   },
+      { $Type: 'UI.DataField', Value: remarks,        Label: 'Remarks'       }
+    ]
+  }
 );
 
 annotate service.SeniorActiveProjects_MaterialRequests with @(
@@ -811,8 +851,50 @@ annotate service.SeniorActiveProjects_MaterialRequests with @(
       Label            : 'Status',
       ![@UI.Importance]: #High
     },
-    { $Type: 'UI.DataField', Value: remarks,        Label: 'Remarks',    ![@UI.Importance]: #Low    }
-  ]
+    { $Type: 'UI.DataField', Value: remarks, Label: 'Remarks', ![@UI.Importance]: #Low }
+  ],
+
+  // Object-page annotations for SeniorMRObjectPage
+  UI.HeaderInfo: {
+    TypeName       : 'Material Request',
+    TypeNamePlural : 'Material Requests',
+    Title          : { $Type: 'UI.DataField', Value: requestNumber },
+    Description    : { $Type: 'UI.DataField', Value: status }
+  },
+
+  UI.Identification: [
+    { $Type: 'UI.DataFieldForAction', Action: 'ProjectService.approveRequest', Label: 'Approve' },
+    { $Type: 'UI.DataFieldForAction', Action: 'ProjectService.rejectRequest',  Label: 'Reject'  }
+  ],
+
+  UI.Facets: [
+    {
+      $Type  : 'UI.ReferenceFacet',
+      ID     : 'SAPMRGeneralInfo',
+      Target : '@UI.FieldGroup#SAPMRGeneralInfo',
+      Label  : 'General Information'
+    },
+    {
+      $Type  : 'UI.ReferenceFacet',
+      ID     : 'SAPMRItems',
+      Target : 'items/@UI.LineItem',
+      Label  : 'Items'
+    }
+  ],
+
+  UI.FieldGroup#SAPMRGeneralInfo: {
+    Label: 'General Information',
+    Data: [
+      { $Type: 'UI.DataField', Value: requestNumber,  Label: 'Request Number' },
+      { $Type: 'UI.DataField', Value: requestDate,    Label: 'Request Date'   },
+      { $Type: 'UI.DataField', Value: requiredDate,   Label: 'Required By'   },
+      { $Type: 'UI.DataField', Value: status,         Label: 'Status'        },
+      { $Type: 'UI.DataField', Value: requestedBy_ID, Label: 'Requested By'  },
+      { $Type: 'UI.DataField', Value: approvedBy_ID,  Label: 'Approved By'   },
+      { $Type: 'UI.DataField', Value: approvalDate,   Label: 'Approval Date' },
+      { $Type: 'UI.DataField', Value: remarks,        Label: 'Remarks'       }
+    ]
+  }
 );
 
 annotate service.MaterialRequests with {
@@ -832,7 +914,7 @@ annotate service.MaterialRequests with {
 annotate service.ActiveProjects_MaterialRequests with {
   requestNumber  @title: 'Request Number'   @Common.FieldControl: #ReadOnly;
   requestDate    @title: 'Request Date';
-  requiredDate   @title: 'Required By'      @mandatory;
+  requiredDate   @title: 'Required By';
   status         @title: 'Status'           @Common.FieldControl: #ReadOnly;
   remarks        @title: 'Remarks'          @UI.MultiLineText: true;
   requestedBy    @title: 'Requested By'
@@ -846,7 +928,7 @@ annotate service.ActiveProjects_MaterialRequests with {
 annotate service.SeniorActiveProjects_MaterialRequests with {
   requestNumber  @title: 'Request Number'   @Common.FieldControl: #ReadOnly;
   requestDate    @title: 'Request Date';
-  requiredDate   @title: 'Required By'      @mandatory;
+  requiredDate   @title: 'Required By';
   status         @title: 'Status'           @Common.FieldControl: #ReadOnly;
   remarks        @title: 'Remarks'          @UI.MultiLineText: true;
   requestedBy    @title: 'Requested By'
@@ -949,28 +1031,31 @@ annotate service.SeniorActiveProjects_MaterialRequestItems with {
 // VENDOR MASTER — List + Object Page annotations
 // ═══════════════════════════════════════════════════════════════
 
-annotate service.VendorMaster with @(
+using VendorService from '../../srv/vendor-service';
+
+annotate VendorService.VendorMaster with @(
   UI.LineItem: [
-    { Value: vendorCode,       Label: 'Vendor Code'      },
-    { Value: vendorName,       Label: 'Vendor Name'      },
-    { Value: gstin,            Label: 'GSTIN'            },
-    { Value: city,             Label: 'City'             },
-    { Value: state,            Label: 'State'            },
-    { Value: contactPerson,    Label: 'Contact Person'   },
-    { Value: phone,            Label: 'Phone'            },
-    { Value: performanceScore, Label: 'Performance Score'},
-    { Value: isActive,         Label: 'Active'           }
+    { Value: vendorCode,       Label: 'Vendor Code',       ![@UI.Importance]: #High   },
+    { Value: vendorName,       Label: 'Vendor Name',       ![@UI.Importance]: #High   },
+    { Value: city,             Label: 'City',              ![@UI.Importance]: #High   },
+    { Value: state,            Label: 'State',             ![@UI.Importance]: #High   },
+    { Value: contactPerson,    Label: 'Contact Person',    ![@UI.Importance]: #Medium },
+    { Value: phone,            Label: 'Phone',             ![@UI.Importance]: #Medium },
+    { Value: email,            Label: 'Email',             ![@UI.Importance]: #Medium },
+    { Value: performanceScore, Label: 'Performance Score', ![@UI.Importance]: #High   },
+    { Value: totalOrders,      Label: 'Total Orders',      ![@UI.Importance]: #Medium },
+    { Value: isActive,         Label: 'Active',            ![@UI.Importance]: #High   }
   ],
   UI.SelectionFields: [ isActive, state, city ],
   UI.HeaderInfo: {
-    TypeName      : 'Vendor',
-    TypeNamePlural: 'Vendors',
+    TypeName      : 'Vendor Profile',
+    TypeNamePlural: 'Vendor Directory',
     Title         : { Value: vendorName },
     Description   : { Value: vendorCode }
   },
   UI.Identification: [
-    { $Type: 'UI.DataFieldForAction', Action: 'ProjectService.deactivateVendor', Label: 'Deactivate' },
-    { $Type: 'UI.DataFieldForAction', Action: 'ProjectService.activateVendor',   Label: 'Activate'   }
+    { $Type: 'UI.DataFieldForAction', Action: 'VendorService.deactivateVendor', Label: 'Deactivate' },
+    { $Type: 'UI.DataFieldForAction', Action: 'VendorService.activateVendor',   Label: 'Activate'   }
   ],
   UI.Facets: [
     { $Type: 'UI.ReferenceFacet', Label: 'General Details',     Target: '@UI.FieldGroup#VendorGeneral' },
@@ -1000,7 +1085,7 @@ annotate service.VendorMaster with @(
   }
 );
 
-annotate service.VendorMaster with {
+annotate VendorService.VendorMaster with {
   vendorCode       @title: 'Vendor Code'        @mandatory;
   vendorName       @title: 'Vendor Name'        @mandatory;
   gstin            @title: 'GSTIN';
@@ -1108,5 +1193,279 @@ annotate service.ThreeWayMatchResults with @(
     { Value: overallStatus,    Label: 'Overall Status' },
     { Value: qtyVariance,      Label: 'Qty Variance'   },
     { Value: valueVariance,    Label: 'Value Variance' }
+  ]
+);
+
+// ═══════════════════════════════════════════════════════════════
+// DELIVERIES & GRN — Missing UI Annotations
+// ═══════════════════════════════════════════════════════════════
+
+using ProcurementService from '../../srv/procurement-service';
+using ReceiptService from '../../srv/receipt-service';
+
+annotate ProcurementService.Deliveries with @(
+  UI.HeaderInfo: {
+    TypeName: 'Delivery',
+    TypeNamePlural: 'Deliveries',
+    Title: { $Type: 'UI.DataField', Value: deliveryNumber },
+    Description: { $Type: 'UI.DataField', Value: status }
+  },
+  UI.SelectionFields: [ status, purchaseOrder_ID ],
+  UI.LineItem: [
+    { $Type: 'UI.DataField', Value: deliveryNumber, Label: 'Delivery No.' },
+    { $Type: 'UI.DataField', Value: purchaseOrder_ID, Label: 'PO Number' },
+    { $Type: 'UI.DataField', Value: scheduledDate, Label: 'Scheduled Date' },
+    { $Type: 'UI.DataField', Value: actualDate, Label: 'Actual Date' },
+    { $Type: 'UI.DataField', Value: status, Label: 'Status' }
+  ],
+  UI.Facets: [
+    {
+      $Type: 'UI.ReferenceFacet',
+      Target: '@UI.FieldGroup#DeliveryDetails',
+      Label: 'Delivery Details'
+    }
+  ],
+  UI.FieldGroup#DeliveryDetails: {
+    Data: [
+      { $Type: 'UI.DataField', Value: deliveryNumber },
+      { $Type: 'UI.DataField', Value: purchaseOrder_ID },
+      { $Type: 'UI.DataField', Value: scheduledDate },
+      { $Type: 'UI.DataField', Value: actualDate },
+      { $Type: 'UI.DataField', Value: delayDays },
+      { $Type: 'UI.DataField', Value: status }
+    ]
+  }
+);
+
+annotate ReceiptService.MaterialReceipts with @(
+  UI.HeaderInfo: {
+    TypeName: 'Material Receipt',
+    TypeNamePlural: 'Material Receipts',
+    Title: { $Type: 'UI.DataField', Value: receiptNumber },
+    Description: { $Type: 'UI.DataField', Value: status }
+  },
+  UI.SelectionFields: [ status, purchaseOrder_ID ],
+  UI.LineItem: [
+    { $Type: 'UI.DataField', Value: receiptNumber, Label: 'Receipt No.' },
+    { $Type: 'UI.DataField', Value: delivery_ID, Label: 'Delivery' },
+    { $Type: 'UI.DataField', Value: purchaseOrder_ID, Label: 'PO Number' },
+    { $Type: 'UI.DataField', Value: receiptDate, Label: 'Receipt Date' },
+    { $Type: 'UI.DataField', Value: status, Label: 'Status' }
+  ],
+  UI.Facets: [
+    {
+      $Type: 'UI.ReferenceFacet',
+      Target: '@UI.FieldGroup#ReceiptDetails',
+      Label: 'Receipt Details'
+    }
+  ],
+  UI.FieldGroup#ReceiptDetails: {
+    Data: [
+      { $Type: 'UI.DataField', Value: receiptNumber },
+      { $Type: 'UI.DataField', Value: delivery_ID },
+      { $Type: 'UI.DataField', Value: purchaseOrder_ID },
+      { $Type: 'UI.DataField', Value: receiptDate },
+      { $Type: 'UI.DataField', Value: receivedBy_ID },
+      { $Type: 'UI.DataField', Value: status }
+    ]
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════
+// PURCHASE ORDERS — UI Annotations
+// ═══════════════════════════════════════════════════════════════
+
+annotate ProcurementService.PurchaseOrders with @(
+  UI.Identification: [
+    { $Type: 'UI.DataFieldForAction', Action: 'ProcurementService.confirmPO', Label: 'Confirm PO'  },
+    { $Type: 'UI.DataFieldForAction', Action: 'ProcurementService.cancelPO',  Label: 'Cancel PO'  },
+    { $Type: 'UI.DataFieldForAction', Action: 'ProcurementService.closePO',   Label: 'Close PO'   }
+  ]
+);
+
+annotate ProcurementService.PurchaseOrders with @(
+  UI.HeaderInfo: {
+    TypeName: 'Purchase Order',
+    TypeNamePlural: 'Purchase Orders',
+    Title: { $Type: 'UI.DataField', Value: poNumber },
+    Description: { $Type: 'UI.DataField', Value: status }
+  },
+  UI.SelectionFields: [ status, vendor_ID, poDate ],
+  UI.LineItem: [
+    { $Type: 'UI.DataField', Value: poNumber, Label: 'PO Number' },
+    { $Type: 'UI.DataField', Value: vendor_ID, Label: 'Vendor' },
+    { $Type: 'UI.DataField', Value: poDate, Label: 'PO Date' },
+    { $Type: 'UI.DataField', Value: deliveryDate, Label: 'Delivery Date' },
+    { $Type: 'UI.DataField', Value: grandTotal, Label: 'Total Amount' },
+    { $Type: 'UI.DataField', Value: status, Label: 'Status' }
+  ],
+  UI.Facets: [
+    {
+      $Type: 'UI.ReferenceFacet',
+      Label: 'PO Details',
+      Target: '@UI.FieldGroup#PODetails'
+    },
+    {
+      $Type: 'UI.ReferenceFacet',
+      Label: 'Line Items',
+      Target: 'items/@UI.LineItem'
+    },
+    {
+      $Type: 'UI.ReferenceFacet',
+      Label: 'Delivery Schedule',
+      Target: 'deliveries/@UI.LineItem'
+    }
+  ],
+  UI.FieldGroup#PODetails: {
+    Data: [
+      { $Type: 'UI.DataField', Value: poNumber },
+      { $Type: 'UI.DataField', Value: vendor_ID },
+      { $Type: 'UI.DataField', Value: project_ID },
+      { $Type: 'UI.DataField', Value: poDate },
+      { $Type: 'UI.DataField', Value: deliveryDate },
+      { $Type: 'UI.DataField', Value: grandTotal },
+      { $Type: 'UI.DataField', Value: status }
+    ]
+  }
+);
+
+annotate ProcurementService.PurchaseOrderItems with @(
+  UI.LineItem: [
+    { $Type: 'UI.DataField', Value: material_ID, Label: 'Material' },
+    { $Type: 'UI.DataField', Value: orderedQty, Label: 'Ordered Qty' },
+    { $Type: 'UI.DataField', Value: unitPrice, Label: 'Unit Price' },
+    { $Type: 'UI.DataField', Value: taxPercent, Label: 'Tax %' },
+    { $Type: 'UI.DataField', Value: totalAmount, Label: 'Line Total' },
+    { $Type: 'UI.DataField', Value: deliveredQty, Label: 'Delivered Qty' }
+  ]
+);
+
+// ═══════════════════════════════════════════════════════════════
+// ProjectService — VendorMaster & PurchaseOrders annotations
+// FE v4 ListReport/ObjectPage always bind to the default model
+// (ProjectService). These mirror the VendorService/Procurement
+// annotations so the same UI metadata is available via /project/.
+// ═══════════════════════════════════════════════════════════════
+
+annotate service.VendorMaster with @(
+  UI.LineItem: [
+    { Value: vendorCode,       Label: 'Vendor Code'       },
+    { Value: vendorName,       Label: 'Vendor Name'       },
+    { Value: gstin,            Label: 'GSTIN'             },
+    { Value: city,             Label: 'City'              },
+    { Value: state,            Label: 'State'             },
+    { Value: contactPerson,    Label: 'Contact Person'    },
+    { Value: phone,            Label: 'Phone'             },
+    { Value: performanceScore, Label: 'Performance Score' },
+    { Value: isActive,         Label: 'Active'            }
+  ],
+  UI.SelectionFields: [ isActive, state, city ],
+  UI.HeaderInfo: {
+    TypeName      : 'Vendor',
+    TypeNamePlural: 'Vendors',
+    Title         : { Value: vendorName },
+    Description   : { Value: vendorCode }
+  },
+  UI.Identification: [
+    { $Type: 'UI.DataFieldForAction', Action: 'ProjectService.deactivateVendor', Label: 'Deactivate' },
+    { $Type: 'UI.DataFieldForAction', Action: 'ProjectService.activateVendor',   Label: 'Activate'   }
+  ],
+  UI.Facets: [
+    { $Type: 'UI.ReferenceFacet', Label: 'General Details',     Target: '@UI.FieldGroup#VMGeneral' },
+    { $Type: 'UI.ReferenceFacet', Label: 'Bank & Payment',      Target: '@UI.FieldGroup#VMBanking' },
+    { $Type: 'UI.ReferenceFacet', Label: 'Performance Metrics', Target: '@UI.FieldGroup#VMPerf'    }
+  ],
+  UI.FieldGroup#VMGeneral: {
+    Label: 'General Details',
+    Data : [
+      { Value: vendorCode }, { Value: vendorName }, { Value: gstin },
+      { Value: pan        }, { Value: address    }, { Value: city  },
+      { Value: state      }, { Value: pincode    }, { Value: contactPerson },
+      { Value: email      }, { Value: phone      }, { Value: paymentTerms  },
+      { Value: isActive   }
+    ]
+  },
+  UI.FieldGroup#VMBanking: {
+    Label: 'Bank & Payment',
+    Data : [ { Value: bankAccount }, { Value: bankIFSC }, { Value: paymentTerms } ]
+  },
+  UI.FieldGroup#VMPerf: {
+    Label: 'Performance',
+    Data : [
+      { Value: performanceScore }, { Value: totalOrders },
+      { Value: onTimeDeliveries }, { Value: qualityScore }
+    ]
+  }
+);
+
+annotate service.VendorMaster with {
+  vendorCode       @title: 'Vendor Code'     @mandatory;
+  vendorName       @title: 'Vendor Name'     @mandatory;
+  gstin            @title: 'GSTIN';
+  pan              @title: 'PAN';
+  address          @title: 'Address';
+  city             @title: 'City';
+  state            @title: 'State';
+  pincode          @title: 'Pincode';
+  contactPerson    @title: 'Contact Person';
+  email            @title: 'Email';
+  phone            @title: 'Phone';
+  bankAccount      @title: 'Bank Account';
+  bankIFSC         @title: 'Bank IFSC';
+  paymentTerms     @title: 'Payment Terms';
+  performanceScore @title: 'Performance Score';
+  totalOrders      @title: 'Total Orders';
+  onTimeDeliveries @title: 'On-Time Deliveries';
+  qualityScore     @title: 'Quality Score';
+  isActive         @title: 'Active';
+};
+
+annotate service.PurchaseOrders with @(
+  UI.Identification: [
+    { $Type: 'UI.DataFieldForAction', Action: 'ProjectService.confirmPO', Label: 'Confirm PO' },
+    { $Type: 'UI.DataFieldForAction', Action: 'ProjectService.cancelPO',  Label: 'Cancel PO'  },
+    { $Type: 'UI.DataFieldForAction', Action: 'ProjectService.closePO',   Label: 'Close PO'   }
+  ],
+  UI.HeaderInfo: {
+    TypeName      : 'Purchase Order',
+    TypeNamePlural: 'Purchase Orders',
+    Title         : { $Type: 'UI.DataField', Value: poNumber },
+    Description   : { $Type: 'UI.DataField', Value: status  }
+  },
+  UI.SelectionFields: [ status, vendor_ID, poDate ],
+  UI.LineItem: [
+    { $Type: 'UI.DataField', Value: poNumber,     Label: 'PO Number'     },
+    { $Type: 'UI.DataField', Value: vendor_ID,    Label: 'Vendor'        },
+    { $Type: 'UI.DataField', Value: poDate,       Label: 'PO Date'       },
+    { $Type: 'UI.DataField', Value: deliveryDate, Label: 'Delivery Date' },
+    { $Type: 'UI.DataField', Value: grandTotal,   Label: 'Total Amount'  },
+    { $Type: 'UI.DataField', Value: status,       Label: 'Status'        }
+  ],
+  UI.Facets: [
+    { $Type: 'UI.ReferenceFacet', Label: 'PO Details',        Target: '@UI.FieldGroup#PODets'   },
+    { $Type: 'UI.ReferenceFacet', Label: 'Line Items',         Target: 'items/@UI.LineItem'      },
+    { $Type: 'UI.ReferenceFacet', Label: 'Delivery Schedule',  Target: 'deliveries/@UI.LineItem' }
+  ],
+  UI.FieldGroup#PODets: {
+    Data: [
+      { $Type: 'UI.DataField', Value: poNumber     },
+      { $Type: 'UI.DataField', Value: vendor_ID    },
+      { $Type: 'UI.DataField', Value: project_ID   },
+      { $Type: 'UI.DataField', Value: poDate       },
+      { $Type: 'UI.DataField', Value: deliveryDate },
+      { $Type: 'UI.DataField', Value: grandTotal   },
+      { $Type: 'UI.DataField', Value: status       }
+    ]
+  }
+);
+
+annotate service.PurchaseOrderItems with @(
+  UI.LineItem: [
+    { $Type: 'UI.DataField', Value: material_ID,  Label: 'Material'      },
+    { $Type: 'UI.DataField', Value: orderedQty,   Label: 'Ordered Qty'   },
+    { $Type: 'UI.DataField', Value: unitPrice,    Label: 'Unit Price'    },
+    { $Type: 'UI.DataField', Value: taxPercent,   Label: 'Tax %'         },
+    { $Type: 'UI.DataField', Value: totalAmount,  Label: 'Line Total'    },
+    { $Type: 'UI.DataField', Value: deliveredQty, Label: 'Delivered Qty' }
   ]
 );

@@ -26,6 +26,15 @@
       "auth": {
         "kind": "mocked",
         "users": {
+          "bdm1": {
+            "password": "pass",
+            "roles": [
+              "BDM"
+            ],
+            "attr": {
+              "name": "Arjun Reddy"
+            }
+          },
           "engineer1": {
             "password": "pass",
             "roles": [
@@ -92,6 +101,7 @@
           "priyanshu.uict22@sot.pdpu.ac.in": {
             "password": "pass",
             "roles": [
+              "BDM",
               "Engineer",
               "ProjectManager",
               "Management",

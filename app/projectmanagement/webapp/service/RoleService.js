@@ -112,6 +112,15 @@ sap.ui.define([], function () {
         GRNObjectPage: [
             "SITE_ENGINEER", "PROCUREMENT_OFFICER", "PROJECT_MANAGER", "MANAGEMENT"
         ],
+        DeliveryList: [
+            "SITE_ENGINEER", "PROCUREMENT_OFFICER", "PROJECT_MANAGER", "MANAGEMENT"
+        ],
+        DeliveryObjectPage: [
+            "SITE_ENGINEER", "PROCUREMENT_OFFICER", "PROJECT_MANAGER", "MANAGEMENT"
+        ],
+        ManagementDashboard: [
+            "MANAGEMENT"
+        ],
         POList: [
             "PROCUREMENT_OFFICER", "PROJECT_MANAGER", "MANAGEMENT"
         ],

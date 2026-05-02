@@ -1,0 +1,3 @@
+ID;purchaseOrder_ID;lineNumber;material_ID;orderedQty;deliveredQty;unitPrice;taxPercent;subtotal;taxAmount;totalAmount
+POI-1001;PO-1001;1;MAT-001;100.000;0.000;1000.00;18;100000.00;18000.00;118000.00
+POI-1002;PO-1002;1;MAT-002;200.000;0.000;250.00;18;50000.00;9000.00;59000.00

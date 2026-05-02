@@ -285,6 +285,14 @@ annotate ProcurementService.PurchaseOrders with @(
   ]
 );
 
+annotate ProcurementService.Deliveries with @(
+  UI.Identification: [
+    { $Type: 'UI.DataFieldForAction', Action: 'ProcurementService.markInTransit', Label: 'Mark In-Transit' },
+    { $Type: 'UI.DataFieldForAction', Action: 'ProcurementService.markDelivered', Label: 'Mark Delivered'  },
+    { $Type: 'UI.DataFieldForAction', Action: 'ProcurementService.markDelayed',   Label: 'Mark Delayed'   }
+  ]
+);
+
 annotate ProcurementService.DeliveryItems with @(
   UI.LineItem: [
     { Value: lineNumber,    Label: 'Line'          },

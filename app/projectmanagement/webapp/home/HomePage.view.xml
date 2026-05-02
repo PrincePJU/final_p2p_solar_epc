@@ -153,6 +153,8 @@
                             id="roleSelect"
                             selectedKey="{view>/currentRole}"
                             change="onRoleChange"
+
+                            visible="{session>/isLocalSimulation}"
                             tooltip="Temporary demo: switch role">
                             <items>
                                 <core:Item key="BDM" text="BDM" />
@@ -271,7 +273,7 @@
                         <f:header>
                             <card:NumericHeader 
                                 title="Site Operations" 
-                                subtitle="Receipts &amp; Damage" 
+                                subtitle="Deliveries, Receipts &amp; Claims"
                                 number="{view>/kpis/siteOps/value}"
                                 scale="{view>/kpis/siteOps/scale}"
                                 trend="{view>/kpis/siteOps/trend}"

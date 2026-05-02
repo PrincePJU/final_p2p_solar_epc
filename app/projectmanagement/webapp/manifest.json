@@ -5,7 +5,10 @@
     "type": "application",
     "i18n": {
       "bundleUrl": "i18n/i18n.properties",
-      "supportedLocales": ["en", ""],
+      "supportedLocales": [
+        "en",
+        ""
+      ],
       "fallbackLocale": ""
     },
     "applicationVersion": {
@@ -59,6 +62,14 @@
           "annotations": [],
           "odataVersion": "4.01"
         }
+      },
+      "dashboardService": {
+        "uri": "/dashboard/",
+        "type": "OData",
+        "settings": {
+          "annotations": [],
+          "odataVersion": "4.01"
+        }
       }
     }
   },
@@ -97,7 +108,10 @@
         "type": "sap.ui.model.resource.ResourceModel",
         "settings": {
           "bundleName": "solar.epc.projectmanagement.i18n.i18n",
-          "supportedLocales": ["en", ""],
+          "supportedLocales": [
+            "en",
+            ""
+          ],
           "fallbackLocale": ""
         }
       },
@@ -145,6 +159,15 @@
           "autoExpandSelect": true,
           "earlyRequests": true
         }
+      },
+      "dashboardService": {
+        "dataSource": "dashboardService",
+        "preload": false,
+        "settings": {
+          "operationMode": "Server",
+          "autoExpandSelect": true,
+          "earlyRequests": false
+        }
       }
     },
     "resources": {
@@ -154,6 +177,12 @@
         },
         {
           "uri": "home/HomePage.css"
+        },
+        {
+          "uri": "App.css"
+        },
+        {
+          "uri": "vendor/QuotationComparison.css"
         }
       ]
     },
@@ -169,6 +198,11 @@
           "pattern": "home",
           "name": "HomePage",
           "target": "HomePage"
+        },
+        {
+          "pattern": "management-overview",
+          "name": "ManagementDashboard",
+          "target": "ManagementDashboard"
         },
         {
           "pattern": "Projects:?query:",
@@ -201,12 +235,12 @@
           "target": "SeniorObjectPage"
         },
         {
-          "pattern": "Vendors:?query:",
+          "pattern": "VendorMaster:?query:",
           "name": "VendorList",
           "target": "VendorList"
         },
         {
-          "pattern": "Vendors({key}):?query:",
+          "pattern": "VendorMaster({key}):?query:",
           "name": "VendorObjectPage",
           "target": "VendorObjectPage"
         },
@@ -244,6 +278,16 @@
           "pattern": "GRN({key}):?query:",
           "name": "GRNObjectPage",
           "target": "GRNObjectPage"
+        },
+        {
+          "pattern": "Deliveries:?query:",
+          "name": "DeliveryList",
+          "target": "DeliveryList"
+        },
+        {
+          "pattern": "Deliveries({key}):?query:",
+          "name": "DeliveryObjectPage",
+          "target": "DeliveryObjectPage"
         },
         {
           "pattern": "PurchaseOrders:?query:",
@@ -335,10 +379,21 @@
               "editableHeaderContent": true,
               "contextPath": "/Projects",
               "controlConfiguration": {
+                "@com.sap.vocabularies.UI.v1.Identification": {
+                  "actions": {
+                    "DataFieldForAction::ProjectService.putOnHold": {
+                      "visible": false
+                    }
+                  }
+                },
                 "@com.sap.vocabularies.UI.v1.Facets": {
                   "sections": {
-                    "BOQSection": { "visible": false },
-                    "MRSection":  { "visible": false }
+                    "BOQSection": {
+                      "visible": false
+                    },
+                    "MRSection": {
+                      "visible": false
+                    }
                   }
                 }
               },
@@ -356,7 +411,9 @@
               "variantManagement": "Page",
               "navigation": {
                 "ActiveProjects": {
-                  "detail": { "route": "EngineerObjectPage" }
+                  "detail": {
+                    "route": "EngineerObjectPage"
+                  }
                 }
               },
               "initialLoad": true,
@@ -367,7 +424,11 @@
                     "selectionMode": "Single",
                     "enableExport": true,
                     "condensedTableLayout": false,
-                    "personalization": { "column": true, "sort": true, "filter": true }
+                    "personalization": {
+                      "column": true,
+                      "sort": true,
+                      "filter": true
+                    }
                   }
                 }
               }
@@ -384,16 +445,26 @@
               "contextPath": "/ActiveProjects",
               "navigation": {
                 "materialRequests": {
-                  "detail": { "route": "EngineerMRObjectPage" }
+                  "detail": {
+                    "route": "EngineerMRObjectPage"
+                  }
                 }
               },
               "controlConfiguration": {
                 "@com.sap.vocabularies.UI.v1.Identification": {
                   "actions": {
-                    "DataFieldForAction::ProjectService.activateProject": { "visible": false },
-                    "DataFieldForAction::ProjectService.putOnHold":        { "visible": false },
-                    "DataFieldForAction::ProjectService.completeProject":  { "visible": false },
-                    "DataFieldForAction::ProjectService.cancelProject":    { "visible": false }
+                    "DataFieldForAction::ProjectService.activateProject": {
+                      "visible": false
+                    },
+                    "DataFieldForAction::ProjectService.putOnHold": {
+                      "visible": false
+                    },
+                    "DataFieldForAction::ProjectService.completeProject": {
+                      "visible": false
+                    },
+                    "DataFieldForAction::ProjectService.cancelProject": {
+                      "visible": false
+                    }
                   }
                 },
                 "boqItems/@com.sap.vocabularies.UI.v1.LineItem": {
@@ -405,7 +476,12 @@
                     "selectionMode": "Multi",
                     "enableExport": true,
                     "condensedTableLayout": false,
-                    "personalization": { "column": true, "sort": true, "filter": true, "group": true }
+                    "personalization": {
+                      "column": true,
+                      "sort": true,
+                      "filter": true,
+                      "group": true
+                    }
                   }
                 },
                 "materialRequests/@com.sap.vocabularies.UI.v1.LineItem": {
@@ -414,12 +490,23 @@
                     "enableExport": true,
                     "selectionMode": "Multi",
                     "condensedTableLayout": false,
-                    "personalization": { "column": true, "sort": true, "filter": true, "group": true }
+                    "personalization": {
+                      "column": true,
+                      "sort": true,
+                      "filter": true,
+                      "group": true
+                    }
                   },
                   "actions": {
-                    "DataFieldForAction::ProjectService.approveRequest": { "visible": false },
-                    "DataFieldForAction::ProjectService.rejectRequest":  { "visible": false },
-                    "DataFieldForAction::ProjectService.closeRequest":   { "visible": false }
+                    "DataFieldForAction::ProjectService.approveRequest": {
+                      "visible": false
+                    },
+                    "DataFieldForAction::ProjectService.rejectRequest": {
+                      "visible": false
+                    },
+                    "DataFieldForAction::ProjectService.closeRequest": {
+                      "visible": false
+                    }
                   }
                 }
               },
@@ -437,7 +524,9 @@
               "variantManagement": "Page",
               "navigation": {
                 "SeniorActiveProjects": {
-                  "detail": { "route": "SeniorObjectPage" }
+                  "detail": {
+                    "route": "SeniorObjectPage"
+                  }
                 }
               },
               "initialLoad": true,
@@ -448,7 +537,11 @@
                     "selectionMode": "Single",
                     "enableExport": true,
                     "condensedTableLayout": false,
-                    "personalization": { "column": true, "sort": true, "filter": true }
+                    "personalization": {
+                      "column": true,
+                      "sort": true,
+                      "filter": true
+                    }
                   }
                 }
               }
@@ -465,16 +558,26 @@
               "contextPath": "/SeniorActiveProjects",
               "navigation": {
                 "materialRequests": {
-                  "detail": { "route": "SeniorMRObjectPage" }
+                  "detail": {
+                    "route": "SeniorMRObjectPage"
+                  }
                 }
               },
               "controlConfiguration": {
                 "@com.sap.vocabularies.UI.v1.Identification": {
                   "actions": {
-                    "DataFieldForAction::ProjectService.activateProject": { "visible": false },
-                    "DataFieldForAction::ProjectService.putOnHold":        { "visible": false },
-                    "DataFieldForAction::ProjectService.completeProject":  { "visible": false },
-                    "DataFieldForAction::ProjectService.cancelProject":    { "visible": false }
+                    "DataFieldForAction::ProjectService.activateProject": {
+                      "visible": false
+                    },
+                    "DataFieldForAction::ProjectService.putOnHold": {
+                      "visible": false
+                    },
+                    "DataFieldForAction::ProjectService.completeProject": {
+                      "visible": false
+                    },
+                    "DataFieldForAction::ProjectService.cancelProject": {
+                      "visible": false
+                    }
                   }
                 },
                 "boqItems/@com.sap.vocabularies.UI.v1.LineItem": {
@@ -483,11 +586,20 @@
                     "selectionMode": "Multi",
                     "enableExport": true,
                     "condensedTableLayout": false,
-                    "personalization": { "column": true, "sort": true, "filter": true, "group": true }
+                    "personalization": {
+                      "column": true,
+                      "sort": true,
+                      "filter": true,
+                      "group": true
+                    }
                   },
                   "actions": {
-                    "StandardAction::Create": { "visible": false },
-                    "StandardAction::Delete": { "visible": false }
+                    "StandardAction::Create": {
+                      "visible": false
+                    },
+                    "StandardAction::Delete": {
+                      "visible": false
+                    }
                   }
                 },
                 "materialRequests/@com.sap.vocabularies.UI.v1.LineItem": {
@@ -496,11 +608,20 @@
                     "enableExport": true,
                     "selectionMode": "Multi",
                     "condensedTableLayout": false,
-                    "personalization": { "column": true, "sort": true, "filter": true, "group": true }
+                    "personalization": {
+                      "column": true,
+                      "sort": true,
+                      "filter": true,
+                      "group": true
+                    }
                   },
                   "actions": {
-                    "StandardAction::Create": { "visible": false },
-                    "DataFieldForAction::ProjectService.submitRequest": { "visible": false }
+                    "StandardAction::Create": {
+                      "visible": false
+                    },
+                    "DataFieldForAction::ProjectService.submitRequest": {
+                      "visible": false
+                    }
                   }
                 }
               },
@@ -518,7 +639,9 @@
               "variantManagement": "Page",
               "navigation": {
                 "VendorMaster": {
-                  "detail": { "route": "VendorObjectPage" }
+                  "detail": {
+                    "route": "VendorObjectPage"
+                  }
                 }
               },
               "initialLoad": true,
@@ -529,7 +652,11 @@
                     "selectionMode": "Single",
                     "enableExport": true,
                     "condensedTableLayout": false,
-                    "personalization": { "column": true, "sort": true, "filter": true }
+                    "personalization": {
+                      "column": true,
+                      "sort": true,
+                      "filter": true
+                    }
                   }
                 }
               }
@@ -548,8 +675,12 @@
               "controlConfiguration": {
                 "@com.sap.vocabularies.UI.v1.Identification": {
                   "actions": {
-                    "DataFieldForAction::ProjectService.deactivateVendor": { "visible": true },
-                    "DataFieldForAction::ProjectService.activateVendor":   { "visible": true }
+                    "DataFieldForAction::ProjectService.deactivateVendor": {
+                      "visible": true
+                    },
+                    "DataFieldForAction::ProjectService.activateVendor": {
+                      "visible": true
+                    }
                   }
                 }
               }
@@ -560,7 +691,6 @@
           "type": "Component",
           "id": "GRNList",
           "name": "sap.fe.templates.ListReport",
-          "model": "receiptService",
           "options": {
             "settings": {
               "contextPath": "/MaterialReceipts",
@@ -568,7 +698,9 @@
               "initialLoad": true,
               "navigation": {
                 "MaterialReceipts": {
-                  "detail": { "route": "GRNObjectPage" }
+                  "detail": {
+                    "route": "GRNObjectPage"
+                  }
                 }
               },
               "controlConfiguration": {
@@ -578,7 +710,11 @@
                     "selectionMode": "Single",
                     "enableExport": true,
                     "condensedTableLayout": false,
-                    "personalization": { "column": true, "sort": true, "filter": true }
+                    "personalization": {
+                      "column": true,
+                      "sort": true,
+                      "filter": true
+                    }
                   }
                 }
               }
@@ -589,7 +725,6 @@
           "type": "Component",
           "id": "GRNObjectPage",
           "name": "sap.fe.templates.ObjectPage",
-          "model": "receiptService",
           "options": {
             "settings": {
               "contextPath": "/MaterialReceipts",
@@ -598,31 +733,123 @@
               "controlConfiguration": {
                 "@com.sap.vocabularies.UI.v1.Identification": {
                   "actions": {
-                    "DataFieldForAction::ReceiptService.verifyReceipt": { "visible": true },
-                    "DataFieldForAction::ReceiptService.rejectReceipt": { "visible": true }
+                    "DataFieldForAction::ProjectService.verifyReceipt": {
+                      "visible": true
+                    },
+                    "DataFieldForAction::ProjectService.rejectReceipt": {
+                      "visible": true
+                    }
                   }
                 },
                 "items/@com.sap.vocabularies.UI.v1.LineItem": {
                   "tableSettings": {
                     "type": "ResponsiveTable",
-                    "creationMode": { "name": "Inline" },
+                    "creationMode": {
+                      "name": "Inline"
+                    },
                     "selectionMode": "Multi",
                     "enableExport": true,
                     "condensedTableLayout": false,
-                    "personalization": { "column": true, "sort": true, "filter": true }
+                    "personalization": {
+                      "column": true,
+                      "sort": true,
+                      "filter": true
+                    }
                   }
                 },
                 "damagedItems/@com.sap.vocabularies.UI.v1.LineItem": {
                   "tableSettings": {
                     "type": "ResponsiveTable",
-                    "creationMode": { "name": "Inline" },
+                    "creationMode": {
+                      "name": "Inline"
+                    },
                     "selectionMode": "Single",
                     "enableExport": true
                   },
                   "actions": {
-                    "DataFieldForAction::ReceiptService.raiseClaim":  { "visible": true },
-                    "DataFieldForAction::ReceiptService.settleClaim": { "visible": true },
-                    "DataFieldForAction::ReceiptService.rejectClaim": { "visible": true }
+                    "DataFieldForAction::ProjectService.raiseClaim": {
+                      "visible": true
+                    },
+                    "DataFieldForAction::ProjectService.settleClaim": {
+                      "visible": true
+                    },
+                    "DataFieldForAction::ProjectService.rejectClaim": {
+                      "visible": true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "DeliveryList": {
+          "type": "Component",
+          "id": "DeliveryList",
+          "name": "sap.fe.templates.ListReport",
+          "options": {
+            "settings": {
+              "contextPath": "/Deliveries",
+              "variantManagement": "Page",
+              "initialLoad": true,
+              "navigation": {
+                "Deliveries": {
+                  "detail": {
+                    "route": "DeliveryObjectPage"
+                  }
+                }
+              },
+              "controlConfiguration": {
+                "@com.sap.vocabularies.UI.v1.LineItem": {
+                  "tableSettings": {
+                    "type": "ResponsiveTable",
+                    "selectionMode": "Single",
+                    "enableExport": true,
+                    "condensedTableLayout": false,
+                    "personalization": {
+                      "column": true,
+                      "sort": true,
+                      "filter": true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "DeliveryObjectPage": {
+          "type": "Component",
+          "id": "DeliveryObjectPage",
+          "name": "sap.fe.templates.ObjectPage",
+          "options": {
+            "settings": {
+              "contextPath": "/Deliveries",
+              "editableHeaderContent": false,
+              "sectionLayout": "Tabs",
+              "controlConfiguration": {
+                "@com.sap.vocabularies.UI.v1.Identification": {
+                  "actions": {
+                    "DataFieldForAction::ProjectService.markInTransit": {
+                      "visible": true
+                    },
+                    "DataFieldForAction::ProjectService.markDelivered": {
+                      "visible": true
+                    },
+                    "DataFieldForAction::ProjectService.markDelayed": {
+                      "visible": true
+                    }
+                  }
+                },
+                "items/@com.sap.vocabularies.UI.v1.LineItem": {
+                  "tableSettings": {
+                    "type": "ResponsiveTable",
+                    "selectionMode": "None",
+                    "enableExport": true,
+                    "condensedTableLayout": false,
+                    "personalization": {
+                      "column": true,
+                      "sort": true,
+                      "filter": true
+                    }
                   }
                 }
               }
@@ -632,30 +859,35 @@
         "POList": {
           "type": "Component",
           "id": "POList",
-          "name": "sap.fe.templates.AnalyticalListPage",
-          "model": "procurementService",
+          "name": "sap.fe.templates.ListReport",
           "options": {
             "settings": {
               "contextPath": "/PurchaseOrders",
               "variantManagement": "Page",
-              "defaultTemplateAnnotationPath": "@com.sap.vocabularies.UI.v1.SelectionVariant#ActivePOs",
               "navigation": {
                 "PurchaseOrders": {
-                  "detail": { "route": "POObjectPage" }
+                  "detail": {
+                    "route": "POObjectPage"
+                  }
                 }
               },
               "initialLoad": true,
               "controlConfiguration": {
                 "@com.sap.vocabularies.UI.v1.LineItem": {
                   "tableSettings": {
-                    "type": "AnalyticalTable",
+                    "type": "ResponsiveTable",
                     "selectionMode": "Single",
                     "enableExport": true,
-                    "condensedTableLayout": false,
-                    "personalization": { "column": true, "sort": true, "filter": true, "group": true }
+                    "personalization": {
+                      "column": true,
+                      "sort": true,
+                      "filter": true
+                    }
                   },
                   "actions": {
-                    "StandardAction::Delete": { "visible": false }
+                    "StandardAction::Delete": {
+                      "visible": false
+                    }
                   }
                 }
               }
@@ -666,7 +898,6 @@
           "type": "Component",
           "id": "POObjectPage",
           "name": "sap.fe.templates.ObjectPage",
-          "model": "procurementService",
           "options": {
             "settings": {
               "contextPath": "/PurchaseOrders",
@@ -675,19 +906,31 @@
               "controlConfiguration": {
                 "@com.sap.vocabularies.UI.v1.Identification": {
                   "actions": {
-                    "DataFieldForAction::ProcurementService.confirmPO": { "visible": true },
-                    "DataFieldForAction::ProcurementService.cancelPO":  { "visible": true },
-                    "DataFieldForAction::ProcurementService.closePO":   { "visible": true }
+                    "DataFieldForAction::ProjectService.confirmPO": {
+                      "visible": true
+                    },
+                    "DataFieldForAction::ProjectService.cancelPO": {
+                      "visible": true
+                    },
+                    "DataFieldForAction::ProjectService.closePO": {
+                      "visible": true
+                    }
                   }
                 },
                 "items/@com.sap.vocabularies.UI.v1.LineItem": {
                   "tableSettings": {
                     "type": "ResponsiveTable",
-                    "creationMode": { "name": "Inline" },
+                    "creationMode": {
+                      "name": "Inline"
+                    },
                     "selectionMode": "Multi",
                     "enableExport": true,
                     "condensedTableLayout": false,
-                    "personalization": { "column": true, "sort": true, "filter": true }
+                    "personalization": {
+                      "column": true,
+                      "sort": true,
+                      "filter": true
+                    }
                   }
                 },
                 "deliveries/@com.sap.vocabularies.UI.v1.LineItem": {
@@ -714,7 +957,9 @@
               "defaultTemplateAnnotationPath": "@com.sap.vocabularies.UI.v1.SelectionVariant#PendingApproval",
               "navigation": {
                 "MaterialRequests": {
-                  "detail": { "route": "MRApprovalDetail" }
+                  "detail": {
+                    "route": "MRApprovalDetail"
+                  }
                 }
               },
               "controlConfiguration": {
@@ -724,11 +969,19 @@
                     "selectionMode": "Multi",
                     "enableExport": true,
                     "condensedTableLayout": false,
-                    "personalization": { "column": true, "sort": true, "filter": true }
+                    "personalization": {
+                      "column": true,
+                      "sort": true,
+                      "filter": true
+                    }
                   },
                   "actions": {
-                    "StandardAction::Create": { "visible": false },
-                    "StandardAction::Delete": { "visible": false }
+                    "StandardAction::Create": {
+                      "visible": false
+                    },
+                    "StandardAction::Delete": {
+                      "visible": false
+                    }
                   }
                 }
               }
@@ -747,8 +1000,12 @@
               "controlConfiguration": {
                 "@com.sap.vocabularies.UI.v1.Identification": {
                   "actions": {
-                    "DataFieldForAction::ProjectService.submitRequest": { "visible": false },
-                    "DataFieldForAction::ProjectService.closeRequest":  { "visible": false }
+                    "DataFieldForAction::ProjectService.submitRequest": {
+                      "visible": false
+                    },
+                    "DataFieldForAction::ProjectService.closeRequest": {
+                      "visible": false
+                    }
                   }
                 }
               }
@@ -766,7 +1023,9 @@
               "initialLoad": true,
               "navigation": {
                 "ApprovedMaterialRequests": {
-                  "detail": { "route": "ProcurementMRDetail" }
+                  "detail": {
+                    "route": "ProcurementMRDetail"
+                  }
                 }
               },
               "controlConfiguration": {
@@ -776,11 +1035,19 @@
                     "selectionMode": "Single",
                     "enableExport": true,
                     "condensedTableLayout": false,
-                    "personalization": { "column": true, "sort": true, "filter": true }
+                    "personalization": {
+                      "column": true,
+                      "sort": true,
+                      "filter": true
+                    }
                   },
                   "actions": {
-                    "StandardAction::Create": { "visible": false },
-                    "StandardAction::Delete": { "visible": false }
+                    "StandardAction::Create": {
+                      "visible": false
+                    },
+                    "StandardAction::Delete": {
+                      "visible": false
+                    }
                   }
                 }
               }
@@ -810,7 +1077,9 @@
               "initialLoad": true,
               "navigation": {
                 "Invoices": {
-                  "detail": { "route": "InvoiceObjectPage" }
+                  "detail": {
+                    "route": "InvoiceObjectPage"
+                  }
                 }
               },
               "controlConfiguration": {
@@ -820,7 +1089,11 @@
                     "selectionMode": "Single",
                     "enableExport": true,
                     "condensedTableLayout": false,
-                    "personalization": { "column": true, "sort": true, "filter": true }
+                    "personalization": {
+                      "column": true,
+                      "sort": true,
+                      "filter": true
+                    }
                   }
                 }
               }
@@ -839,11 +1112,21 @@
               "controlConfiguration": {
                 "@com.sap.vocabularies.UI.v1.Identification": {
                   "actions": {
-                    "DataFieldForAction::InvoiceService.submitInvoice":       { "visible": true },
-                    "DataFieldForAction::InvoiceService.performThreeWayMatch":{ "visible": true },
-                    "DataFieldForAction::InvoiceService.approveInvoice":      { "visible": true },
-                    "DataFieldForAction::InvoiceService.rejectInvoice":       { "visible": true },
-                    "DataFieldForAction::InvoiceService.markPaid":            { "visible": true }
+                    "DataFieldForAction::ProjectService.submitInvoice": {
+                      "visible": true
+                    },
+                    "DataFieldForAction::ProjectService.performThreeWayMatch": {
+                      "visible": true
+                    },
+                    "DataFieldForAction::ProjectService.approveInvoice": {
+                      "visible": true
+                    },
+                    "DataFieldForAction::ProjectService.rejectInvoice": {
+                      "visible": true
+                    },
+                    "DataFieldForAction::ProjectService.markPaid": {
+                      "visible": true
+                    }
                   }
                 }
               }
@@ -862,15 +1145,23 @@
               "controlConfiguration": {
                 "@com.sap.vocabularies.UI.v1.Identification": {
                   "actions": {
-                    "DataFieldForAction::ProjectService.approveRequest": { "visible": false },
-                    "DataFieldForAction::ProjectService.rejectRequest":  { "visible": false },
-                    "DataFieldForAction::ProjectService.closeRequest":   { "visible": false }
+                    "DataFieldForAction::ProjectService.approveRequest": {
+                      "visible": false
+                    },
+                    "DataFieldForAction::ProjectService.rejectRequest": {
+                      "visible": false
+                    },
+                    "DataFieldForAction::ProjectService.closeRequest": {
+                      "visible": false
+                    }
                   }
                 },
                 "items/@com.sap.vocabularies.UI.v1.LineItem": {
                   "tableSettings": {
                     "type": "ResponsiveTable",
-                    "creationMode": { "name": "Inline" },
+                    "creationMode": {
+                      "name": "Inline"
+                    },
                     "selectionMode": "Multi",
                     "enableExport": true
                   }
@@ -891,8 +1182,12 @@
               "controlConfiguration": {
                 "@com.sap.vocabularies.UI.v1.Identification": {
                   "actions": {
-                    "DataFieldForAction::ProjectService.submitRequest": { "visible": false },
-                    "DataFieldForAction::ProjectService.closeRequest":  { "visible": false }
+                    "DataFieldForAction::ProjectService.submitRequest": {
+                      "visible": false
+                    },
+                    "DataFieldForAction::ProjectService.closeRequest": {
+                      "visible": false
+                    }
                   }
                 },
                 "items/@com.sap.vocabularies.UI.v1.LineItem": {
@@ -902,13 +1197,23 @@
                     "enableExport": true
                   },
                   "actions": {
-                    "StandardAction::Create": { "visible": false },
-                    "StandardAction::Delete": { "visible": false }
+                    "StandardAction::Create": {
+                      "visible": false
+                    },
+                    "StandardAction::Delete": {
+                      "visible": false
+                    }
                   }
                 }
               }
             }
           }
+        },
+        "ManagementDashboard": {
+          "type": "View",
+          "id": "ManagementDashboard",
+          "name": "solar.epc.projectmanagement.management.ManagementDashboard",
+          "viewLevel": 2
         },
         "LoginPage": {
           "type": "View",

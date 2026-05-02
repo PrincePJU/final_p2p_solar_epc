@@ -14,8 +14,9 @@ sap.ui.define([
         init: function () {
             AppComponent.prototype.init.apply(this, arguments);
 
+            // authPending: true blocks the route guard until session is resolved
             const oSessionModel = new JSONModel({
-                authPending: false,
+                authPending: true,
                 authMode: "",
                 isLocalSimulation: false,
                 canSwitchRole: false,
@@ -33,6 +34,16 @@ sap.ui.define([
             this.setModel(oSessionModel, "session");
 
             this.getRouter().attachBeforeRouteMatched(this._onBeforeRouteMatched, this);
+
+            // Restore session from sessionStorage so page reload doesn't force re-login
+            const sSavedAuth = sessionStorage.getItem("solarEpcAuth");
+            if (sSavedAuth) {
+                this._loadSession(sSavedAuth).catch(function () {
+                    sessionStorage.removeItem("solarEpcAuth");
+                });
+            } else {
+                oSessionModel.setProperty("/authPending", false);
+            }
         },
 
         _getDefaultRouteForRole: function (sRole) {
@@ -41,6 +52,7 @@ sap.ui.define([
 
         loginWithCredentials: function (sUsername, sPassword) {
             const sAuthHeader = "Basic " + window.btoa(sUsername + ":" + sPassword);
+            sessionStorage.setItem("solarEpcAuth", sAuthHeader);
             return this._loadSession(sAuthHeader);
         },
 
@@ -83,13 +95,14 @@ sap.ui.define([
                         unauthorized: false,
                         lastDeniedRoute: ""
                     });
+                    // setData doesn't fire propertyChange — explicitly trigger it so
+                    // any attachPropertyChange listeners (e.g. HomePage) react immediately.
+                    oSessionModel.setProperty("/currentRole", sCurrentRole);
 
                     const oHashChanger = HashChanger.getInstance();
                     const sHash = oHashChanger.getHash();
                     if (!sHash || sHash === "LoginPage") {
                         this.getRouter().navTo(this._getDefaultRouteForRole(sCurrentRole), {}, true);
-                    } else {
-                        this.getRouter().parse(sHash);
                     }
                 }.bind(this))
                 .catch(function (oError) {
@@ -101,7 +114,7 @@ sap.ui.define([
         },
 
         _applyAuthorizationHeader: function (sAuthHeader) {
-            ["", "vendorService", "invoiceService", "procurementService"].forEach(function (sModelName) {
+            ["", "vendorService", "invoiceService", "procurementService", "receiptService", "dashboardService"].forEach(function (sModelName) {
                 const oModel = sModelName ? this.getModel(sModelName) : this.getModel();
                 if (oModel && typeof oModel.changeHttpHeaders === "function") {
                     oModel.changeHttpHeaders({ Authorization: sAuthHeader });

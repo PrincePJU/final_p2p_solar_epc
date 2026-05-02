@@ -18,7 +18,7 @@ sap.ui.define([
         "PROCUREMENT_OFFICER": { "Engineering & Projects": "ProjectsList", "Procurement": "POList", default: "POList" },
         "SITE_ENGINEER": { "Engineering & Projects": "ProjectsList", "Site Operations": "GRNList", default: "GRNList" },
         "FINANCE_OFFICER": { "Engineering & Projects": "ProjectsList", "Finance Cockpit": "InvoiceList", default: "InvoiceList" },
-        "MANAGEMENT": { "Engineering & Projects": "ProjectsList", "Procurement": "ProcurementMRList", default: "ProjectsList" }
+        "MANAGEMENT": { "MyHome": "ManagementDashboard", "Engineering & Projects": "ProjectsList", "Procurement": "ProcurementMRList", "Site Operations": "DeliveryList", "Finance Cockpit": "InvoiceList", default: "ManagementDashboard" }
     };
 
     return Controller.extend("solar.epc.projectmanagement.home.HomePage", {
@@ -86,6 +86,7 @@ sap.ui.define([
 
             oModel.setProperty("/role", RoleService.getDisplayName(sRole));
             oModel.setProperty("/currentRole", sRole);
+            oModel.setProperty("/userName", this.getOwnerComponent().getModel("session").getProperty("/userName") || "User");
             oModel.setProperty("/todos", todos);
             oModel.setProperty("/todosCount", todos.length);
             oModel.setProperty("/access", oAccess);
@@ -161,9 +162,36 @@ sap.ui.define([
 
         onRoleChange: function (oEvent) {
             const sRole = oEvent.getSource().getSelectedKey();
-            if (sRole) {
-                this._applyRole(sRole);
+            if (!sRole) { return; }
+
+            const oSession = this.getOwnerComponent().getModel("session");
+            const bIsLocal = oSession.getProperty("/isLocalSimulation");
+
+            if (bIsLocal) {
+                // In local simulation, each UI role maps to a dedicated demo user.
+                // Re-authenticating ensures the CAP backend enforces the correct @restrict grants.
+                const DEMO_USERS = {
+                    "BDM":                 { u: "bdm1",      p: "pass" },
+                    "ENGINEER":            { u: "engineer1", p: "pass" },
+                    "PROJECT_MANAGER":     { u: "pm1",       p: "pass" },
+                    "PROCUREMENT_OFFICER": { u: "proc1",     p: "pass" },
+                    "SITE_ENGINEER":       { u: "site1",     p: "pass" },
+                    "FINANCE_OFFICER":     { u: "finance1",  p: "pass" },
+                    "MANAGEMENT":          { u: "mgmt1",     p: "pass" }
+                };
+                const oCreds = DEMO_USERS[sRole];
+                if (oCreds) {
+                    MessageToast.show("Switching to " + RoleService.getDisplayName(sRole) + "...");
+                    this.getOwnerComponent()
+                        .loginWithCredentials(oCreds.u, oCreds.p)
+                        .catch(function () {
+                            MessageToast.show("Role switch failed — credential error");
+                        });
+                    return;
+                }
             }
+
+            this._applyRole(sRole);
         },
 
         onTodoPress: function (oEvent) {
@@ -210,15 +238,12 @@ sap.ui.define([
             const oRouter = this.getOwnerComponent().getRouter();
             const sRole = this.getView().getModel("view").getProperty("/currentRole");
 
-            // Determine route based on tile header and role
-            let sRoute;
-            if (sHeader === "MyHome") {
-                sRoute = "HomePage";
-            } else {
-                // Role-aware routing: BDM/Management → ProjectsList, Engineers → EngineeringProjectsList
-                const oRoleRoutes = ROUTE_BY_ROLE[sRole];
-                sRoute = oRoleRoutes && oRoleRoutes[sHeader] ? oRoleRoutes[sHeader] : oRoleRoutes?.default;
-            }
+            // Determine route based on tile header and role.
+            // MyHome routes to ManagementDashboard for MANAGEMENT, otherwise HomePage.
+            const oRoleRoutes = ROUTE_BY_ROLE[sRole];
+            let sRoute = oRoleRoutes && oRoleRoutes[sHeader]
+                ? oRoleRoutes[sHeader]
+                : sHeader === "MyHome" ? "HomePage" : oRoleRoutes?.default;
 
             if (!sRoute) {
                 MessageToast.show("'" + sHeader + "' module is coming soon");
@@ -250,7 +275,7 @@ sap.ui.define([
                 "compareQuotations":  "QuotationComparison",
                 "approvedMRs":        "ProcurementMRList",
                 "createPO":           "POList",
-                "trackDeliveries":    "POList",
+                "trackDeliveries":    "DeliveryList",
                 "postGR":             "GRNList",
                 "reportDamage":       "GRNList",
                 "validateInvoice":    "InvoiceList"
@@ -332,7 +357,6 @@ sap.ui.define([
             const sPath = oEvent.getParameter("path");
             if (sPath === "/currentRole") {
                 const sRole = oEvent.getSource().getProperty("/currentRole");
-                // Only update view if this controller's model disagrees (avoid loop)
                 if (this.getView().getModel("view").getProperty("/currentRole") !== sRole) {
                     this._applyRole(sRole);
                 }

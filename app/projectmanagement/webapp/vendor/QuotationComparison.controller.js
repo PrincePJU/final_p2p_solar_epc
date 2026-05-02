@@ -1,398 +1,319 @@
 sap.ui.define([
     "sap/ui/core/mvc/Controller",
     "sap/ui/model/json/JSONModel",
+    "sap/ui/model/Filter",
+    "sap/ui/model/FilterOperator",
     "sap/m/MessageToast",
     "sap/m/MessageBox",
-    "sap/ui/core/Item"
-], function (Controller, JSONModel, MessageToast, MessageBox, Item) {
+    "sap/m/Dialog",
+    "sap/m/Label",
+    "sap/m/Input",
+    "sap/m/Button"
+], function (Controller, JSONModel, Filter, FilterOperator, MessageToast, MessageBox, Dialog, Label, Input, Button) {
     "use strict";
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
-
-    function _statusState(status) {
-        const map = {
-            DRAFT            : "None",
-            SUBMITTED        : "Warning",
-            UNDER_EVALUATION : "Warning",
-            SELECTED         : "Success",
-            REJECTED         : "Error"
-        };
-        return map[status] || "None";
-    }
-
-    function _priceState(rank) {
-        if (rank === 1) return "Success";
-        if (rank === 2) return "Warning";
-        return "Error";
-    }
-
-    function _leadDaysState(days, median) {
-        if (days <= median * 0.9) return "Success";
-        if (days >= median * 1.2) return "Error";
-        return "None";
-    }
-
-    function _scoreState(score) {
-        if (score >= 7.5) return "Success";
-        if (score >= 5)   return "Warning";
-        return "Error";
-    }
-
-    // ═════════════════════════════════════════════════════════════════════════
     return Controller.extend("solar.epc.projectmanagement.vendor.QuotationComparison", {
 
         onInit: function () {
-            const oModel = new JSONModel({
-                selectedMRId      : "",
-                selectedMR        : {},
-                hasQuotations     : false,
-                quotations        : [],
-                quotationCount    : 0,
-                comparisonMessage : "",
-                itemComparison    : [],
-                sortBy            : "totalAmount",
-                materialRequests  : []
+            const oViewModel = new JSONModel({
+                materialRequests: [],
+                selectedMR: {},
+                selectedMRDetails: {},
+                quotations: [],
+                stats: {
+                    totalQuotations: 0,
+                    bestPrice: "",
+                    bestVendor: "",
+                    avgPrice: "",
+                    fastestDelivery: "",
+                    savingsVsAvg: ""
+                },
+                busy: false
             });
-            this.getView().setModel(oModel, "qc");
-
-            console.log("QuotationComparison onInit fired");
-            this._loadMaterialRequests();
+            this.getView().setModel(oViewModel, "view");
+            this._fetchMaterialRequests();
         },
-
-        _loadMaterialRequests: function () {
-            const oQCModel   = this.getView().getModel("qc");
-            const oComponent = this.getOwnerComponent();
-            // Use vendorService which owns the procurement context and exposes
-            // ApprovedMaterialRequests (filtered to APPROVED/ORDERED server-side).
-            const oVendorModel = oComponent.getModel("vendorService");
-
-            if (!oVendorModel) {
-                console.warn("Vendor service model not ready");
-                return;
-            }
-
-            oVendorModel.bindList("/ApprovedMaterialRequests", null, null, null, {
-                $expand: "project($select=ID,projectCode,projectName)"
-            }).requestContexts(0, 200)
-            .then(function (aCtx) {
-                const aMRs = aCtx.map(function (ctx) {
-                    const o = ctx.getObject();
-                    const sProject = o.project
-                        ? (o.project.projectName || o.project.projectCode || "")
-                        : "";
-                    return {
-                        ID           : o.ID,
-                        requestNumber: o.requestNumber || o.ID,
-                        projectName  : sProject,
-                        status       : o.status || "APPROVED"
-                    };
-                });
-                oQCModel.setProperty("/materialRequests", aMRs);
-                if (aMRs.length === 0) {
-                    oQCModel.setProperty("/comparisonMessage",
-                        "No approved material requests found. MRs must be approved by Engineering before quotations can be compared.");
-                    oQCModel.setProperty("/hasQuotations", false);
-                }
-            }.bind(this))
-            .catch(function (oErr) {
-                console.warn("ApprovedMaterialRequests load failed:", oErr.message || oErr);
-                // Fallback: load all MRs and filter client-side
-                oVendorModel.bindList("/MaterialRequests").requestContexts(0, 200)
-                .then(function (aCtx) {
-                    const aMRs = aCtx
-                        .map(function (ctx) { return ctx.getObject(); })
-                        .filter(function (o) { return o.status === "APPROVED" || o.status === "ORDERED"; })
-                        .map(function (o) {
-                            return {
-                                ID           : o.ID,
-                                requestNumber: o.requestNumber || o.ID,
-                                projectName  : "",
-                                status       : o.status
-                            };
-                        });
-                    oQCModel.setProperty("/materialRequests", aMRs);
-                }.bind(this))
-                .catch(function () {});
-            }.bind(this));
-        },
-
-        // ── Navigation ────────────────────────────────────────────────────────
 
         onNavBack: function () {
-            if (window.history.length > 1) {
-                window.history.back();
-                return;
-            }
-            this.getOwnerComponent().getRouter().navTo("HomePage");
+            window.history.go(-1);
         },
-
-        onNavHome: function () {
-            this.getOwnerComponent().getRouter().navTo("HomePage");
-        },
-
-        onNavQuotations: function () {
-            this.getOwnerComponent().getRouter().navTo("QuotationList");
-        },
-
-        // ── Step 1: Load MR list ──────────────────────────────────────────────
 
         onMRSelectChange: function (oEvent) {
-            const sKey = oEvent.getSource().getSelectedKey();
-            const oModel = this.getView().getModel("qc");
-            oModel.setProperty("/selectedMRId", sKey);
-            oModel.setProperty("/hasQuotations", false);
-            oModel.setProperty("/quotations", []);
+            const oItem = oEvent.getParameter("selectedItem");
+            const sKey = oItem ? oItem.getKey() : "";
+            this.getView().byId("compareButton").setEnabled(!!sKey);
 
+            const oViewModel = this.getView().getModel("view");
             if (sKey) {
-                this._loadMRDetails(sKey);
+                const aMRs = oViewModel.getProperty("/materialRequests");
+                const oMR = aMRs.find(function (mr) { return mr.ID === sKey; }) || {};
+                oViewModel.setProperty("/selectedMR", oMR);
+                oViewModel.setProperty("/selectedMRDetails", this._buildMrDetails(oMR));
+            } else {
+                oViewModel.setProperty("/selectedMR", {});
+                oViewModel.setProperty("/selectedMRDetails", {});
             }
+            // Clear previous results when MR changes
+            oViewModel.setProperty("/quotations", []);
+            oViewModel.setProperty("/stats", this._emptyStats());
         },
 
-        _loadMRDetails: function (sMRId) {
-            const oMainModel = this.getOwnerComponent().getModel();
-            if (!oMainModel) { return; }
-
-            oMainModel.bindContext(
-                "/MaterialRequests(ID='" + sMRId + "',IsActiveEntity=true)", null, {
-                $expand: "project"
-            }).requestObject()
-            .then(function (oMR) {
-                const oModel = this.getView().getModel("qc");
-                oModel.setProperty("/selectedMR", {
-                    requestNumber: oMR.requestNumber,
-                    project      : oMR.project ? (oMR.project.projectName || oMR.project.projectCode) : "",
-                    requiredDate : oMR.requiredDate
-                });
-            }.bind(this))
-            .catch(function () {});
-        },
-
-        // ── Step 2: Load Quotations ───────────────────────────────────────────
-
-        onLoadQuotations: function () {
-            const sKey = this.getView().getModel("qc").getProperty("/selectedMRId");
-            if (!sKey) {
+        onCompare: function () {
+            const oSelect = this.getView().byId("mrSelect");
+            const sMrId = oSelect.getSelectedKey();
+            if (!sMrId) {
                 MessageToast.show("Please select a Material Request first.");
                 return;
             }
-            this._fetchQuotations(sKey);
-        },
 
-        _fetchQuotations: function (sMRId) {
+            const oViewModel = this.getView().getModel("view");
             const oVendorModel = this.getOwnerComponent().getModel("vendorService");
-            if (!oVendorModel) {
-                MessageToast.show("Vendor service not available.");
-                return;
-            }
+            const oFunction = oVendorModel.bindContext("/compareQuotations(...)");
 
-            oVendorModel.bindList("/VendorQuotations", null, null, null, {
-                $filter : "materialRequest_ID eq '" + sMRId + "'",
-                $expand : "vendor,items($expand=material)"
-            }).requestContexts(0, 50)
-            .then(function (aCtx) {
-                const aRaw = aCtx.map(function (ctx) { return ctx.getObject(); });
-                this._processQuotations(aRaw, sMRId);
-            }.bind(this))
-            .catch(function () {
-                // Fallback to all quotations if filter fails
-                oVendorModel.bindList("/VendorQuotations", null, null, null, {
-                    $expand: "vendor,items($expand=material)"
-                }).requestContexts(0, 100)
-                .then(function (aCtx) {
-                    const aFiltered = aCtx
-                        .map(function (ctx) { return ctx.getObject(); })
-                        .filter(function (q) { return q.materialRequest_ID === sMRId; });
-                    this._processQuotations(aFiltered, sMRId);
-                }.bind(this))
-                .catch(function () {
-                    MessageToast.show("Error loading quotations. Please try again.");
-                });
-            }.bind(this));
-        },
+            oViewModel.setProperty("/busy", true);
+            oViewModel.setProperty("/quotations", []);
 
-        _processQuotations: function (aRaw, sMRId) {
-            const oModel = this.getView().getModel("qc");
+            oFunction.setParameter("materialRequestId", sMrId);
+            oFunction.execute()
+                .then(() => {
+                    const rawResult = oFunction.getBoundContext().getObject();
+                    const aRaw = Array.isArray(rawResult) ? rawResult
+                        : (rawResult && Array.isArray(rawResult.value) ? rawResult.value : []);
 
-            if (!aRaw || aRaw.length === 0) {
-                oModel.setProperty("/hasQuotations", false);
-                oModel.setProperty("/quotationCount", 0);
-                MessageToast.show("No quotations found for this material request.");
-                return;
-            }
-
-            // Sort by totalAmount ascending for ranking
-            const aSorted = aRaw.slice().sort(function (a, b) {
-                return (a.totalAmount || 0) - (b.totalAmount || 0);
-            });
-
-            const minTotal  = aSorted[0].totalAmount || 0;
-            const maxTotal  = aSorted[aSorted.length - 1].totalAmount || 0;
-            const leadTimes = aRaw.map(function (q) { return q.deliveryLeadDays || 0; });
-            const medianLead = leadTimes.sort((a, b) => a - b)[Math.floor(leadTimes.length / 2)] || 7;
-
-            const aQuotations = aRaw.map(function (q, idx) {
-                // Price rank (1 = cheapest)
-                const rank = aSorted.findIndex(function (s) { return s.ID === q.ID; }) + 1;
-
-                return {
-                    ID              : q.ID,
-                    vendorName      : q.vendor ? q.vendor.vendorName : "Unknown Vendor",
-                    vendorCode      : q.vendor ? q.vendor.vendorCode : "",
-                    vendorScore     : q.vendor ? parseFloat((q.vendor.performanceScore || 0).toFixed(1)) : 0,
-                    subtotal        : q.subtotal || 0,
-                    taxAmount       : q.taxAmount || 0,
-                    totalAmount     : q.totalAmount || 0,
-                    deliveryLeadDays: q.deliveryLeadDays || 0,
-                    paymentTerms    : q.paymentTerms || "-",
-                    status          : q.status,
-                    isSelected      : q.isSelected || false,
-                    currency        : q.currency || "INR",
-                    rank            : rank,
-                    rankState       : _priceState(rank),
-                    priceState      : _priceState(rank),
-                    leadDaysState   : _leadDaysState(q.deliveryLeadDays, medianLead),
-                    scoreState      : _scoreState(q.vendor ? q.vendor.performanceScore : 0),
-                    statusState     : _statusState(q.status),
-                    items           : q.items || []
-                };
-            });
-
-            // Item-level comparison
-            const aItemComparison = this._buildItemComparison(aRaw);
-
-            const sSelected = aRaw.some(function (q) { return q.isSelected; })
-                ? "A vendor has already been selected for this request."
-                : "Compare vendor bids and click 'Select Vendor' to finalise the decision.";
-
-            oModel.setProperty("/quotations",       aQuotations);
-            oModel.setProperty("/itemComparison",   aItemComparison);
-            oModel.setProperty("/quotationCount",   aQuotations.length);
-            oModel.setProperty("/hasQuotations",    true);
-            oModel.setProperty("/comparisonMessage", sSelected);
-        },
-
-        _buildItemComparison: function (aQuotations) {
-            // Group items by material across all quotations
-            const mByMaterial = {};
-
-            aQuotations.forEach(function (q) {
-                const sVendorName = q.vendor ? q.vendor.vendorName : "Unknown";
-                (q.items || []).forEach(function (item) {
-                    const sMat = item.material_ID || item.material;
-                    if (!sMat) { return; }
-                    if (!mByMaterial[sMat]) {
-                        mByMaterial[sMat] = {
-                            materialCode: item.material ? (item.material.materialCode || sMat) : sMat,
-                            description : item.description || (item.material ? item.material.description : ""),
-                            quotedQty   : item.quotedQty || 0,
-                            uom         : item.uom || "",
-                            prices      : []
-                        };
+                    if (!aRaw.length) {
+                        MessageToast.show("No quotations found for evaluation.");
+                        oViewModel.setProperty("/stats", this._emptyStats());
+                        return;
                     }
-                    mByMaterial[sMat].prices.push({
-                        vendorName: sVendorName,
-                        unitPrice : item.unitPrice || 0
+
+                    // Fetch vendor details for each unique vendor_ID
+                    const aVendorIds = [...new Set(aRaw.map(q => q.vendor_ID).filter(Boolean))];
+                    return this._fetchVendorsByIds(oVendorModel, aVendorIds).then(aVendors => {
+                        const oVendorMap = {};
+                        aVendors.forEach(v => { if (v && v.ID) oVendorMap[v.ID] = v; });
+
+                        // aRaw is already sorted asc by totalAmount from service
+                        const fBestPrice = parseFloat(aRaw[0].totalAmount) || 0;
+                        const fTotal = aRaw.reduce((s, q) => s + (parseFloat(q.totalAmount) || 0), 0);
+                        const fAvg = fTotal / aRaw.length;
+                        const nFastest = Math.min(...aRaw.map(q => q.deliveryLeadDays || 9999));
+                        const fSavings = fAvg - fBestPrice;
+
+                        const aQuotations = aRaw.map(q => {
+                            const fAmount = parseFloat(q.totalAmount) || 0;
+                            const bBest = Math.abs(fAmount - fBestPrice) < 0.01;
+                            const fAboveAvg = fAmount - fAvg;
+                            return Object.assign({}, q, {
+                                vendor: oVendorMap[q.vendor_ID] || { vendorName: "—", vendorCode: "—" },
+                                isBestPrice: bBest,
+                                savingsVsAvg: !bBest && fAboveAvg > 0
+                                    ? this._fmt(fAboveAvg)
+                                    : ""
+                            });
+                        });
+
+                        oViewModel.setProperty("/quotations", aQuotations);
+                        oViewModel.setProperty("/stats", {
+                            totalQuotations: aRaw.length,
+                            bestPrice:       this._fmt(fBestPrice),
+                            bestVendor:      (oVendorMap[aRaw[0].vendor_ID] || {}).vendorName || "—",
+                            avgPrice:        this._fmt(fAvg),
+                            fastestDelivery: nFastest === 9999 ? "—" : String(nFastest),
+                            savingsVsAvg:    fSavings > 0 ? "₹ " + this._fmt(fSavings) : "—"
+                        });
+
+                        MessageToast.show(aRaw.length + " quotations loaded for comparison.");
                     });
+                })
+                .catch(oError => {
+                    MessageBox.error("Failed to fetch quotations: " + (oError.message || oError));
+                })
+                .finally(() => {
+                    oViewModel.setProperty("/busy", false);
                 });
-            });
-
-            return Object.values(mByMaterial).map(function (m) {
-                const prices = m.prices.map(function (p) { return p.unitPrice; });
-                const bestPrice  = Math.min.apply(null, prices);
-                const worstPrice = Math.max.apply(null, prices);
-                const best = m.prices.find(function (p) { return p.unitPrice === bestPrice; });
-                return {
-                    materialCode: m.materialCode,
-                    description : m.description,
-                    quotedQty   : m.quotedQty,
-                    uom         : m.uom,
-                    bestPrice   : bestPrice,
-                    worstPrice  : worstPrice,
-                    variance    : parseFloat((worstPrice - bestPrice).toFixed(2)),
-                    bestVendor  : best ? best.vendorName : "-"
-                };
-            });
         },
 
-        // ── Sorting ───────────────────────────────────────────────────────────
-
-        onSortChange: function (oEvent) {
-            const sSortKey = oEvent.getSource().getSelectedKey();
-            const oModel   = this.getView().getModel("qc");
-            const aQ = oModel.getProperty("/quotations").slice();
-
-            aQ.sort(function (a, b) {
-                if (sSortKey === "totalAmount")     { return a.totalAmount - b.totalAmount; }
-                if (sSortKey === "deliveryLeadDays"){ return a.deliveryLeadDays - b.deliveryLeadDays; }
-                if (sSortKey === "vendorScore")      { return b.vendorScore - a.vendorScore; }
-                return 0;
-            });
-            // Re-rank
-            aQ.forEach(function (q, i) {
-                q.rank       = i + 1;
-                q.rankState  = _priceState(i + 1);
-                q.priceState = _priceState(i + 1);
-            });
-            oModel.setProperty("/quotations", aQ);
-        },
-
-        // ── Quotation row press ───────────────────────────────────────────────
-
-        onQuotationRowPress: function (oEvent) {
-            const oCtx  = oEvent.getSource().getBindingContext("qc");
-            const sName = oCtx.getProperty("vendorName");
-            MessageToast.show("Viewing quotation details for " + sName + ".");
-        },
-
-        // ── Select vendor ─────────────────────────────────────────────────────
-
-        onSelectVendorPress: function (oEvent) {
-            const oButton = oEvent.getSource();
-            const oCtx    = oButton.getBindingContext("qc");
-            const sQuotId = oCtx.getProperty("ID");
-            const sVendor = oCtx.getProperty("vendorName");
-
-            MessageBox.confirm(
-                "Select " + sVendor + " as the vendor for this material request?",
-                {
-                    title  : "Confirm Vendor Selection",
-                    actions: [MessageBox.Action.YES, MessageBox.Action.NO],
-                    onClose: function (sAction) {
-                        if (sAction === MessageBox.Action.YES) {
-                            this._callSelectVendor(sQuotId, sVendor);
-                        }
-                    }.bind(this)
-                }
-            );
-        },
-
-        _callSelectVendor: function (sQuotId, sVendorName) {
+        onSelectVendor: function (oEvent) {
+            const oCtx = oEvent.getSource().getBindingContext("view");
+            const sQuotationId = oCtx.getProperty("ID");
+            const sVendorName  = oCtx.getProperty("vendor/vendorName");
             const oVendorModel = this.getOwnerComponent().getModel("vendorService");
-            if (!oVendorModel) {
-                MessageToast.show("Vendor service not available.");
-                return;
+
+            const oInput = new Input({
+                id: "selectionReasonInput",
+                width: "100%",
+                placeholder: "e.g., Best price with reliable delivery history"
+            });
+
+            const oDialog = new Dialog({
+                title: "Confirm Vendor Selection",
+                content: [
+                    new Label({ text: "Selecting: " + sVendorName, design: "Bold" }),
+                    new Label({ text: "Provide a reason for selecting this vendor:" }),
+                    oInput
+                ],
+                contentWidth: "400px",
+                beginButton: new Button({
+                    text: "Confirm Selection",
+                    type: "Emphasized",
+                    icon: "sap-icon://accept",
+                    press: () => {
+                        const sReason = oInput.getValue();
+                        if (!sReason.trim()) {
+                            MessageToast.show("A selection reason is required.");
+                            return;
+                        }
+                        const oAction = oVendorModel.bindContext(
+                            "/VendorQuotations(" + sQuotationId + ")/VendorService.selectVendor(...)"
+                        );
+                        oAction.setParameter("selectionReason", sReason);
+                        oAction.execute()
+                            .then(() => {
+                                MessageToast.show(sVendorName + " selected. Other quotations rejected.");
+                                this.onCompare();
+                            })
+                            .catch(oErr => {
+                                MessageBox.error("Vendor selection failed: " + (oErr.message || oErr));
+                            });
+                        oDialog.close();
+                    }
+                }),
+                endButton: new Button({
+                    text: "Cancel",
+                    press: function () { oDialog.close(); }
+                }),
+                afterClose: function () { oDialog.destroy(); }
+            });
+            oDialog.open();
+        },
+
+        // ── Private ───────────────────────────────────────────────
+
+        _fetchMaterialRequests: function () {
+            const oVendorModel = this.getOwnerComponent().getModel("vendorService");
+            const oListBinding = oVendorModel.bindList(
+                "/ApprovedMaterialRequests", undefined, [], [],
+                { $expand: "project", $orderby: "requestDate desc" }
+            );
+            oListBinding.requestContexts(0, 100).then(aContexts => {
+                const aMRs = aContexts.map(function (c) {
+                    const oMR = c.getObject();
+                    return Object.assign({}, oMR, {
+                        statusState: this._statusState(oMR.status),
+                        requestDateText: this._formatDate(oMR.requestDate),
+                        requiredDateText: this._formatDate(oMR.requiredDate),
+                        longDescription: this._buildSharedMrDescription(oMR)
+                    });
+                }.bind(this));
+                this.getView().getModel("view").setProperty("/materialRequests", aMRs);
+            }).catch(oErr => {
+                console.warn("Failed to load material requests:", oErr.message || oErr);
+            });
+        },
+
+        _fetchVendorsByIds: function (oVendorModel, aVendorIds) {
+            if (!aVendorIds.length) {
+                return Promise.resolve([]);
             }
 
-            const oContext = oVendorModel.bindContext(
-                "/VendorQuotations(ID='" + sQuotId + "',IsActiveEntity=true)/VendorService.selectVendor(...)"
-            );
-            oContext.setParameter("selectionReason", "Best price-quality ratio based on comparison.");
+            const aFilters = aVendorIds.map(function (sId) {
+                return new Filter("ID", FilterOperator.EQ, sId);
+            });
+            const oFilter = aFilters.length === 1 ? aFilters[0] : new Filter({
+                filters: aFilters,
+                and: false
+            });
 
-            oContext.execute()
-            .then(function () {
-                MessageBox.success(
-                    sVendorName + " has been selected as the vendor.\n\nYou can now create a Purchase Order.",
-                    { title: "Vendor Selected" }
-                );
-                // Refresh quotations
-                const sMRId = this.getView().getModel("qc").getProperty("/selectedMRId");
-                this._fetchQuotations(sMRId);
-            }.bind(this))
-            .catch(function (oErr) {
-                MessageBox.error(
-                    "Failed to select vendor: " + (oErr.message || oErr),
-                    { title: "Error" }
-                );
+            return oVendorModel.bindList("/VendorMaster", undefined, [], [oFilter])
+                .requestContexts(0, aVendorIds.length)
+                .then(function (aContexts) {
+                    return aContexts.map(function (oContext) {
+                        return oContext.getObject();
+                    });
+                })
+                .catch(function () {
+                    return [];
+                });
+        },
+
+        _emptyStats: function () {
+            return {
+                totalQuotations: 0,
+                bestPrice: "",
+                bestVendor: "",
+                avgPrice: "",
+                fastestDelivery: "",
+                savingsVsAvg: ""
+            };
+        },
+
+        _buildMrDetails: function (oMR) {
+            if (!oMR || !oMR.ID) {
+                return {};
+            }
+
+            const sProjectName = oMR.project && oMR.project.projectName ? oMR.project.projectName : "the assigned solar project";
+            const sProjectCode = oMR.project && oMR.project.projectCode ? oMR.project.projectCode : "Project";
+            const sRemarks = oMR.remarks || "Commercial and engineering remarks will appear here once the sourcing package is finalized.";
+
+            return {
+                projectName: sProjectName,
+                projectCode: sProjectCode,
+                requestDateText: this._formatDate(oMR.requestDate),
+                requiredDateText: this._formatDate(oMR.requiredDate),
+                statusState: this._statusState(oMR.status),
+                overviewTitle: "Procurement readiness snapshot",
+                longDescription: this._buildSharedMrDescription(oMR),
+                commercialNote: "This material request covers sourcing alignment, quote normalization, delivery risk review, and stakeholder-ready vendor selection notes for " + sProjectName + ".",
+                remarksLabel: "Procurement note",
+                remarksText: sRemarks
+            };
+        },
+
+        _buildSharedMrDescription: function (oMR) {
+            const sProjectName = oMR.project && oMR.project.projectName ? oMR.project.projectName : "the current solar package";
+            const sStatus = oMR.status || "APPROVED";
+            const sRequiredDate = this._formatDate(oMR.requiredDate);
+            const sRequestDate = this._formatDate(oMR.requestDate);
+
+            return "This sourcing package consolidates engineering demand, commercial evaluation, and delivery readiness for " +
+                sProjectName + ". Raised on " + sRequestDate + " and targeted for fulfillment by " + sRequiredDate +
+                ", it is being reviewed as a " + sStatus.toLowerCase().replace(/_/g, " ") +
+                " request so the team can compare vendor commercials, lead times, and award confidence from one decision surface.";
+        },
+
+        _formatDate: function (sDate) {
+            if (!sDate) {
+                return "TBD";
+            }
+
+            const oDate = new Date(sDate);
+            if (Number.isNaN(oDate.getTime())) {
+                return sDate;
+            }
+
+            return oDate.toLocaleDateString("en-IN", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric"
+            });
+        },
+
+        _statusState: function (sStatus) {
+            const oMap = {
+                APPROVED: "Success",
+                ORDERED: "Information",
+                SUBMITTED: "Warning",
+                REJECTED: "Error",
+                CLOSED: "None"
+            };
+
+            return oMap[sStatus] || "None";
+        },
+
+        _fmt: function (fValue) {
+            return parseFloat(fValue || 0).toLocaleString("en-IN", {
+                maximumFractionDigits: 0
             });
         }
     });
