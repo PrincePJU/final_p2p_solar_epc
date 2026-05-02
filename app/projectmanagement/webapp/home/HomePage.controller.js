@@ -86,6 +86,7 @@ sap.ui.define([
 
             oModel.setProperty("/role", RoleService.getDisplayName(sRole));
             oModel.setProperty("/currentRole", sRole);
+            oModel.setProperty("/userName", this.getOwnerComponent().getModel("session").getProperty("/userName") || "User");
             oModel.setProperty("/todos", todos);
             oModel.setProperty("/todosCount", todos.length);
             oModel.setProperty("/access", oAccess);
@@ -161,9 +162,36 @@ sap.ui.define([
 
         onRoleChange: function (oEvent) {
             const sRole = oEvent.getSource().getSelectedKey();
-            if (sRole) {
-                this._applyRole(sRole);
+            if (!sRole) { return; }
+
+            const oSession = this.getOwnerComponent().getModel("session");
+            const bIsLocal = oSession.getProperty("/isLocalSimulation");
+
+            if (bIsLocal) {
+                // In local simulation, each UI role maps to a dedicated demo user.
+                // Re-authenticating ensures the CAP backend enforces the correct @restrict grants.
+                const DEMO_USERS = {
+                    "BDM":                 { u: "bdm1",      p: "pass" },
+                    "ENGINEER":            { u: "engineer1", p: "pass" },
+                    "PROJECT_MANAGER":     { u: "pm1",       p: "pass" },
+                    "PROCUREMENT_OFFICER": { u: "proc1",     p: "pass" },
+                    "SITE_ENGINEER":       { u: "site1",     p: "pass" },
+                    "FINANCE_OFFICER":     { u: "finance1",  p: "pass" },
+                    "MANAGEMENT":          { u: "mgmt1",     p: "pass" }
+                };
+                const oCreds = DEMO_USERS[sRole];
+                if (oCreds) {
+                    MessageToast.show("Switching to " + RoleService.getDisplayName(sRole) + "...");
+                    this.getOwnerComponent()
+                        .loginWithCredentials(oCreds.u, oCreds.p)
+                        .catch(function () {
+                            MessageToast.show("Role switch failed — credential error");
+                        });
+                    return;
+                }
             }
+
+            this._applyRole(sRole);
         },
 
         onTodoPress: function (oEvent) {
@@ -329,7 +357,6 @@ sap.ui.define([
             const sPath = oEvent.getParameter("path");
             if (sPath === "/currentRole") {
                 const sRole = oEvent.getSource().getProperty("/currentRole");
-                // Only update view if this controller's model disagrees (avoid loop)
                 if (this.getView().getModel("view").getProperty("/currentRole") !== sRole) {
                     this._applyRole(sRole);
                 }

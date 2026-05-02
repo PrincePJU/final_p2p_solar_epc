@@ -33,6 +33,38 @@
                         </items>
                     </IconTabBar>
 
+                    <VBox
+                        visible="{app>/pageBannerVisible}"
+                        class="appRouteBanner">
+                        <HBox justifyContent="SpaceBetween" wrap="Wrap" class="appRouteBannerInner">
+                            <VBox class="appRouteBannerCopy">
+                                <Text text="{app>/pageBannerEyebrow}" class="appRouteBannerEyebrow" />
+                                <Title text="{app>/pageBannerTitle}" level="H3" class="appRouteBannerTitle" />
+                                <Text text="{app>/pageBannerDescription}" class="appRouteBannerText" />
+                                <Text text="Vendor directory" class="appRouteBannerFieldLabel" />
+                            </VBox>
+                            <VBox class="appRouteBannerOrbit">
+                                <Text text="Decision Canvas" class="appRouteBannerOrbitEyebrow" />
+                                <Text text="Commercial + performance + vendor context" class="appRouteBannerOrbitText" />
+                            </VBox>
+                            <HBox wrap="Wrap" class="appRouteBannerActions">
+                                <Button
+                                    text="Back"
+                                    icon="sap-icon://nav-back"
+                                    type="Transparent"
+                                    press=".onBannerBackPress"
+                                    class="appRouteBannerBackBtn" />
+                                <Button
+                                    text="{app>/pageBannerNextText}"
+                                    icon="sap-icon://navigation-right-arrow"
+                                    iconFirst="false"
+                                    type="Emphasized"
+                                    press=".onBannerNextPress"
+                                    class="appRouteBannerNextBtn" />
+                            </HBox>
+                        </HBox>
+                    </VBox>
+
                     <f:FlexibleColumnLayout
                         id="fcl"
                         backgroundDesign="Solid"

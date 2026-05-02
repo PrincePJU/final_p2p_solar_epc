@@ -41,16 +41,18 @@ module.exports = class VendorService extends cds.ApplicationService {
 
   async _generateVendorCode(req) {
     if (req.data.vendorCode) return; // don't overwrite if caller set it explicitly
-    const year = new Date().getFullYear();
-    const result = await SELECT.one.from(this.entities.VendorMaster)
-      .columns('vendorCode')
-      .orderBy('createdAt desc');
-    let seq = 1;
-    if (result?.vendorCode) {
-      const match = result.vendorCode.match(/VND-\d{4}-(\d{4})$/);
-      if (match) seq = parseInt(match[1]) + 1;
+    const { VendorMaster } = this.entities;
+    // Find the highest numeric suffix from any vendorCode format (VND-1001 or VND-YYYY-NNNN)
+    const allVendors = await SELECT.from(VendorMaster).columns('vendorCode');
+    let maxSeq = 1000;
+    for (const v of allVendors) {
+      const code = v.vendorCode || '';
+      const m1 = code.match(/VND-(\d{4})$/);
+      const m2 = code.match(/VND-\d{4}-(\d{4})$/);
+      const num = m1 ? parseInt(m1[1]) : m2 ? parseInt(m2[1]) : 0;
+      if (num > maxSeq) maxSeq = num;
     }
-    req.data.vendorCode        = `VND-${year}-${String(seq).padStart(4, '0')}`;
+    req.data.vendorCode        = `VND-${maxSeq + 1}`;
     req.data.isActive          = req.data.isActive ?? true;
     req.data.performanceScore  = req.data.performanceScore  ?? 0;
     req.data.totalOrders       = req.data.totalOrders       ?? 0;

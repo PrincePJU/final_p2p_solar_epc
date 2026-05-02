@@ -278,6 +278,7 @@ service ProjectService @(path: '/project') {
   };
 
   // ── VENDOR MASTER ─────────────────────────────────────────────
+  @odata.draft.enabled
   @restrict: [
     { grant: ['READ'],                     to: ['BDM','Engineer','ProjectManager','Management','ProcurementOfficer','FinanceOfficer'] },
     { grant: ['CREATE','UPDATE','DELETE'], to: ['ProcurementOfficer','Management'] },
@@ -295,18 +296,77 @@ service ProjectService @(path: '/project') {
     vendor : redirected to VendorMaster
   };
 
-  // ── PURCHASE ORDERS & RECEIPTS (read-only references) ─────────
-  @readonly
-  entity PurchaseOrders as projection on epc.PurchaseOrders;
+  // ── PURCHASE ORDERS ───────────────────────────────────────────
+  @odata.draft.enabled
+  @restrict: [
+    { grant: ['READ'],                    to: ['BDM','Engineer','ProjectManager','Management','ProcurementOfficer','FinanceOfficer'] },
+    { grant: ['CREATE','UPDATE','DELETE'], to: ['ProcurementOfficer','Management'] },
+    { grant: ['confirmPO','cancelPO','closePO'], to: ['ProcurementOfficer','Management'] }
+  ]
+  entity PurchaseOrders as projection on epc.PurchaseOrders {
+    *,
+    project         : redirected to Projects,
+    vendor          : redirected to VendorMaster,
+    materialRequest : redirected to MaterialRequests,
+    items           : redirected to PurchaseOrderItems,
+    deliveries      : redirected to Deliveries
+  } actions {
+    action confirmPO()                   returns PurchaseOrders;
+    action cancelPO(reason: String(500)) returns PurchaseOrders;
+    action closePO()                     returns PurchaseOrders;
+  };
 
-  @readonly
-  entity PurchaseOrderItems as projection on epc.PurchaseOrderItems;
+  entity PurchaseOrderItems as projection on epc.PurchaseOrderItems {
+    *,
+    purchaseOrder : redirected to PurchaseOrders,
+    material      : redirected to MaterialMaster
+  };
 
-  @readonly
-  entity MaterialReceipts as projection on epc.MaterialReceipts;
+  // ── DELIVERIES ────────────────────────────────────────────────
+  @restrict: [
+    { grant: ['READ'],                    to: ['BDM','Engineer','ProjectManager','Management','ProcurementOfficer','FinanceOfficer'] },
+    { grant: ['CREATE','UPDATE'],         to: ['ProcurementOfficer','Management'] },
+    { grant: ['markInTransit','markDelivered','markDelayed'], to: ['ProcurementOfficer','Management'] }
+  ]
+  entity Deliveries as projection on epc.Deliveries {
+    *,
+    purchaseOrder : redirected to PurchaseOrders,
+    vendor        : redirected to VendorMaster,
+    items         : redirected to DeliveryItems
+  } actions {
+    action markInTransit()                                     returns Deliveries;
+    action markDelivered(actualDate: Date)                     returns Deliveries;
+    action markDelayed(reason: String(500), newDate: Date)     returns Deliveries;
+  };
 
-  @readonly
-  entity MaterialReceiptItems as projection on epc.MaterialReceiptItems;
+  entity DeliveryItems as projection on epc.DeliveryItems {
+    *,
+    delivery : redirected to Deliveries,
+    poItem   : redirected to PurchaseOrderItems,
+    material : redirected to MaterialMaster
+  };
+
+  // ── MATERIAL RECEIPTS (GRN) ───────────────────────────────────
+  @restrict: [
+    { grant: ['READ'],                    to: ['BDM','Engineer','ProjectManager','Management','ProcurementOfficer','FinanceOfficer'] },
+    { grant: ['CREATE','UPDATE'],         to: ['ProcurementOfficer','Management'] },
+    { grant: ['verifyReceipt','rejectReceipt'], to: ['ProcurementOfficer','Management'] }
+  ]
+  entity MaterialReceipts as projection on epc.MaterialReceipts {
+    *,
+    delivery      : redirected to Deliveries,
+    purchaseOrder : redirected to PurchaseOrders,
+    items         : redirected to MaterialReceiptItems
+  } actions {
+    action verifyReceipt(verificationRemarks: String(500)) returns MaterialReceipts;
+    action rejectReceipt(rejectionReason: String(500))     returns MaterialReceipts;
+  };
+
+  entity MaterialReceiptItems as projection on epc.MaterialReceiptItems {
+    *,
+    receipt  : redirected to MaterialReceipts,
+    material : redirected to MaterialMaster
+  };
 
   // ── INVOICES ──────────────────────────────────────────────────
   @odata.draft.enabled
