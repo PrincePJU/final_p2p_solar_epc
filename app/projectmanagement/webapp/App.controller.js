@@ -16,7 +16,13 @@ sap.ui.define([
             this._aHashHistory = [];
             this._bBackNavigation = false;
             this.getView().setModel(new JSONModel({
-                showBackButton: false
+                showBackButton: false,
+                pageBannerVisible: false,
+                pageBannerEyebrow: "",
+                pageBannerTitle: "",
+                pageBannerDescription: "",
+                pageBannerNextText: "Next",
+                pageBannerRoute: ""
             }), "app");
 
             this.getOwnerComponent().getRouter().attachRouteMatched(this._onRouteMatched, this);
@@ -82,18 +88,31 @@ sap.ui.define([
             Theming.setTheme(sTheme);
         },
 
+        onBannerBackPress: function () {
+            this.onBackPress();
+        },
+
+        onBannerNextPress: function () {
+            const sRoute = this.getView().getModel("app").getProperty("/pageBannerRoute");
+            if (sRoute) {
+                this.getOwnerComponent().getRouter().navTo(sRoute);
+            }
+        },
+
         _onRouteMatched: function (oEvent) {
             const sRouteName = oEvent.getParameter("name");
             const sHash = HashChanger.getInstance().getHash();
 
             if (!sHash || sRouteName === "LoginPage") {
                 this._updateBackButton(sRouteName);
+                this._updatePageBanner(sRouteName);
                 return;
             }
 
             if (this._bBackNavigation) {
                 this._bBackNavigation = false;
                 this._updateBackButton(sRouteName);
+                this._updatePageBanner(sRouteName);
                 return;
             }
 
@@ -102,6 +121,7 @@ sap.ui.define([
             }
 
             this._updateBackButton(sRouteName);
+            this._updatePageBanner(sRouteName);
         },
 
         _updateBackButton: function (sRouteName) {
@@ -109,6 +129,33 @@ sap.ui.define([
                 sRouteName !== "HomePage";
 
             this.getView().getModel("app").setProperty("/showBackButton", bShow);
+        },
+
+        _updatePageBanner: function (sRouteName) {
+            const oAppModel = this.getView().getModel("app");
+            const mBannerConfig = {
+                VendorList: {
+                    pageBannerVisible: true,
+                    pageBannerEyebrow: "Vendor Evaluation Workspace",
+                    pageBannerTitle: "Review approved suppliers with commercial clarity, performance context, and faster sourcing decisions.",
+                    pageBannerDescription: "Use this page to validate vendor reach, contact readiness, performance indicators, and activation status before opening a vendor record or moving into quotation comparison.",
+                    pageBannerNextText: "Compare Quotations",
+                    pageBannerRoute: "QuotationComparison"
+                }
+            };
+
+            const oConfig = mBannerConfig[sRouteName] || {
+                pageBannerVisible: false,
+                pageBannerEyebrow: "",
+                pageBannerTitle: "",
+                pageBannerDescription: "",
+                pageBannerNextText: "Next",
+                pageBannerRoute: ""
+            };
+
+            Object.keys(oConfig).forEach(function (sKey) {
+                oAppModel.setProperty("/" + sKey, oConfig[sKey]);
+            });
         }
     });
 });

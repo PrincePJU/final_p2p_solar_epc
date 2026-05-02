@@ -20,6 +20,12 @@ module.exports = class ProjectService extends cds.ApplicationService {
       ActiveProjects_BOQItems,
       SeniorActiveProjects_BOQItems,
       VendorMaster,
+      PurchaseOrders,
+      PurchaseOrderItems,
+      Deliveries,
+      DeliveryItems,
+      MaterialReceipts,
+      MaterialReceiptItems,
       Invoices,
       InvoiceItems,
       ThreeWayMatchResults
@@ -51,6 +57,14 @@ module.exports = class ProjectService extends cds.ApplicationService {
     this.before(['CREATE', 'UPDATE', 'DELETE'], ActiveProjects_MaterialRequests,       this._checkProjectActiveGate.bind(this));
     this.before(['CREATE', 'UPDATE', 'DELETE'], SeniorActiveProjects_MaterialRequests, this._checkProjectActiveGate.bind(this));
     this.before('UPDATE', Projects,                                                    this._preventHeaderUpdateByEngineer.bind(this));
+    this.before('UPDATE', ActiveProjects,                                              this._preventHeaderUpdateByEngineer.bind(this));
+
+    // ── DRAFT ACTIVATION — bypass gate checks for ActiveProjects draft ──
+    // CAP fires UPDATE before draftActivate; the handlers above would block
+    // activation of engineer-owned drafts. We handle the activate itself
+    // explicitly and suppress the gate on IsActiveEntity=false payloads.
+    this.on('draftActivate', ActiveProjects,       this._handleDraftActivate.bind(this));
+    this.on('draftActivate', SeniorActiveProjects, this._handleDraftActivate.bind(this));
 
     // ── PROJECT ACTIONS ───────────────────────────────────────────
     this.on('activateProject',  Projects, this._activateProject.bind(this));
@@ -70,6 +84,23 @@ module.exports = class ProjectService extends cds.ApplicationService {
     // ── VENDOR MASTER ACTIONS ─────────────────────────────────────
     this.on('activateVendor',   VendorMaster, this._activateVendor.bind(this));
     this.on('deactivateVendor', VendorMaster, this._deactivateVendor.bind(this));
+
+    // ── PURCHASE ORDER ACTIONS ─────────────────────────────────
+    this.before('CREATE', PurchaseOrders, this._generatePONumber.bind(this));
+    this.on('confirmPO', PurchaseOrders, this._confirmPO.bind(this));
+    this.on('cancelPO',  PurchaseOrders, this._cancelPO.bind(this));
+    this.on('closePO',   PurchaseOrders, this._closePO.bind(this));
+
+    // ── DELIVERY ACTIONS ────────────────────────────────────────
+    this.before('CREATE', Deliveries, this._generateDeliveryNumber.bind(this));
+    this.on('markInTransit',  Deliveries, this._markInTransit.bind(this));
+    this.on('markDelivered',  Deliveries, this._markDelivered.bind(this));
+    this.on('markDelayed',    Deliveries, this._markDelayed.bind(this));
+
+    // ── MATERIAL RECEIPT ACTIONS (GRN) ──────────────────────────
+    this.before('CREATE', MaterialReceipts, this._generateReceiptNumber.bind(this));
+    this.on('verifyReceipt', MaterialReceipts, this._verifyReceipt.bind(this));
+    this.on('rejectReceipt', MaterialReceipts, this._rejectReceipt.bind(this));
 
     // ── INVOICE ACTIONS ───────────────────────────────────────────
     this.on('submitInvoice',        Invoices, this._submitInvoice.bind(this));
@@ -369,6 +400,8 @@ module.exports = class ProjectService extends cds.ApplicationService {
   async _preventHeaderUpdateByEngineer(req) {
     // Skip during draft activation — full entity payload is written back by CAP, not a real header edit
     if (req.data.IsActiveEntity === true) return;
+    // Also skip if this is a draft-activate payload (sent with IsActiveEntity=false but via draftActivate action)
+    if (req._.draftActivate) return;
 
     if (req.user && req.user.is('Engineer') && !req.user.is('BDM') && !req.user.is('Management')) {
       const updatedFields = Object.keys(req.data).filter(key =>
@@ -423,6 +456,17 @@ module.exports = class ProjectService extends cds.ApplicationService {
         (req.data.plannedQty * req.data.estimatedRate).toFixed(2)
       );
     }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // DRAFT ACTIVATION HANDLER
+  // ═══════════════════════════════════════════════════════════════
+
+  async _handleDraftActivate(req, next) {
+    // Mark request so nested before-UPDATE hooks know this is draft activation
+    if (req._) req._.draftActivate = true;
+    // Delegate to the default CAP draft activation
+    return next();
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -622,4 +666,131 @@ module.exports = class ProjectService extends cds.ApplicationService {
     };
     return map[status] ?? 0;
   }
+
+  // ═══════════════════════════════════════════════════════════════
+  // PURCHASE ORDERS
+  // ═══════════════════════════════════════════════════════════════
+
+  async _generatePONumber(req) {
+    if (req.data.poNumber) return;
+    const year = new Date().getFullYear();
+    const last = await SELECT.one.from(this.entities.PurchaseOrders).columns('poNumber').orderBy('createdAt desc');
+    let seq = 1;
+    if (last?.poNumber) { const m = last.poNumber.match(/PO-\d{4}-(\d{4})$/); if (m) seq = parseInt(m[1]) + 1; }
+    req.data.poNumber   = `PO-${year}-${String(seq).padStart(4, '0')}`;
+    req.data.poDate     = req.data.poDate    || new Date().toISOString().slice(0, 10);
+    req.data.status     = req.data.status    || 'DRAFT';
+    req.data.subtotal   = req.data.subtotal  ?? 0;
+    req.data.taxAmount  = req.data.taxAmount ?? 0;
+    req.data.grandTotal = req.data.grandTotal?? 0;
+    req.data.currency   = req.data.currency  || 'INR';
+  }
+
+  async _confirmPO(req) {
+    const { ID } = req.params[0];
+    const po = await SELECT.one.from(this.entities.PurchaseOrders).where({ ID });
+    if (!po) return req.error(404, `PO not found`);
+    if (!['DRAFT','PENDING'].includes(po.status)) return req.error(400, `Cannot confirm PO in status ${po.status}`);
+    await UPDATE(this.entities.PurchaseOrders).set({ status: 'CONFIRMED' }).where({ ID });
+    return SELECT.one.from(this.entities.PurchaseOrders).where({ ID });
+  }
+
+  async _cancelPO(req) {
+    const { ID } = req.params[0];
+    const { reason } = req.data;
+    const po = await SELECT.one.from(this.entities.PurchaseOrders).where({ ID });
+    if (!po) return req.error(404, `PO not found`);
+    if (['CLOSED','CANCELLED'].includes(po.status)) return req.error(400, `PO is already ${po.status}`);
+    await UPDATE(this.entities.PurchaseOrders).set({ status: 'CANCELLED', remarks: reason || '' }).where({ ID });
+    return SELECT.one.from(this.entities.PurchaseOrders).where({ ID });
+  }
+
+  async _closePO(req) {
+    const { ID } = req.params[0];
+    const po = await SELECT.one.from(this.entities.PurchaseOrders).where({ ID });
+    if (!po) return req.error(404, `PO not found`);
+    if (po.status !== 'CONFIRMED') return req.error(400, `Only CONFIRMED POs can be closed`);
+    await UPDATE(this.entities.PurchaseOrders).set({ status: 'CLOSED' }).where({ ID });
+    return SELECT.one.from(this.entities.PurchaseOrders).where({ ID });
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // DELIVERIES
+  // ═══════════════════════════════════════════════════════════════
+
+  async _generateDeliveryNumber(req) {
+    if (req.data.deliveryNumber) return;
+    const year = new Date().getFullYear();
+    const last = await SELECT.one.from(this.entities.Deliveries).columns('deliveryNumber').orderBy('createdAt desc');
+    let seq = 1;
+    if (last?.deliveryNumber) { const m = last.deliveryNumber.match(/DEL-\d{4}-(\d{4})$/); if (m) seq = parseInt(m[1]) + 1; }
+    req.data.deliveryNumber = `DEL-${year}-${String(seq).padStart(4, '0')}`;
+    req.data.status         = req.data.status || 'SCHEDULED';
+    req.data.delayDays      = req.data.delayDays ?? 0;
+  }
+
+  async _markInTransit(req) {
+    const { ID } = req.params[0];
+    await UPDATE(this.entities.Deliveries).set({ status: 'IN_TRANSIT' }).where({ ID });
+    return SELECT.one.from(this.entities.Deliveries).where({ ID });
+  }
+
+  async _markDelivered(req) {
+    const { ID } = req.params[0];
+    const { actualDate } = req.data;
+    const del = await SELECT.one.from(this.entities.Deliveries).where({ ID });
+    if (!del) return req.error(404, `Delivery not found`);
+    const actualD = new Date(actualDate || new Date());
+    const delayDays = Math.max(0, Math.round((actualD - new Date(del.scheduledDate)) / 86400000));
+    await UPDATE(this.entities.Deliveries)
+      .set({ status: 'DELIVERED', actualDate: actualDate || new Date().toISOString().slice(0,10), delayDays })
+      .where({ ID });
+    return SELECT.one.from(this.entities.Deliveries).where({ ID });
+  }
+
+  async _markDelayed(req) {
+    const { ID } = req.params[0];
+    const { reason, newDate } = req.data;
+    await UPDATE(this.entities.Deliveries)
+      .set({ status: 'DELAYED', delayReason: reason || '', scheduledDate: newDate })
+      .where({ ID });
+    return SELECT.one.from(this.entities.Deliveries).where({ ID });
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // MATERIAL RECEIPTS (GRN)
+  // ═══════════════════════════════════════════════════════════════
+
+  async _generateReceiptNumber(req) {
+    if (req.data.receiptNumber) return;
+    const year = new Date().getFullYear();
+    const last = await SELECT.one.from(this.entities.MaterialReceipts).columns('receiptNumber').orderBy('createdAt desc');
+    let seq = 1;
+    if (last?.receiptNumber) { const m = last.receiptNumber.match(/GRN-\d{4}-(\d{4})$/); if (m) seq = parseInt(m[1]) + 1; }
+    req.data.receiptNumber = `GRN-${year}-${String(seq).padStart(4, '0')}`;
+    req.data.receiptDate   = req.data.receiptDate || new Date().toISOString().slice(0, 10);
+    req.data.status        = req.data.status || 'PENDING';
+  }
+
+  async _verifyReceipt(req) {
+    const { ID } = req.params[0];
+    const { verificationRemarks } = req.data;
+    const receipt = await SELECT.one.from(this.entities.MaterialReceipts).where({ ID });
+    if (!receipt) return req.error(404, `Receipt not found`);
+    if (!['PENDING','RECEIVED'].includes(receipt.status)) return req.error(400, `Cannot verify receipt in status ${receipt.status}`);
+    await UPDATE(this.entities.MaterialReceipts)
+      .set({ status: 'VERIFIED', overallRemarks: verificationRemarks || '', verificationDate: new Date().toISOString().slice(0,10) })
+      .where({ ID });
+    return SELECT.one.from(this.entities.MaterialReceipts).where({ ID });
+  }
+
+  async _rejectReceipt(req) {
+    const { ID } = req.params[0];
+    const { rejectionReason } = req.data;
+    await UPDATE(this.entities.MaterialReceipts)
+      .set({ status: 'REJECTED', overallRemarks: rejectionReason || '' })
+      .where({ ID });
+    return SELECT.one.from(this.entities.MaterialReceipts).where({ ID });
+  }
 };
+

@@ -153,6 +153,8 @@
                             id="roleSelect"
                             selectedKey="{view>/currentRole}"
                             change="onRoleChange"
+
+                            visible="{session>/isLocalSimulation}"
                             tooltip="Temporary demo: switch role">
                             <items>
                                 <core:Item key="BDM" text="BDM" />

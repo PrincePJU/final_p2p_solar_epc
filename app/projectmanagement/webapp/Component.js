@@ -95,13 +95,14 @@ sap.ui.define([
                         unauthorized: false,
                         lastDeniedRoute: ""
                     });
+                    // setData doesn't fire propertyChange — explicitly trigger it so
+                    // any attachPropertyChange listeners (e.g. HomePage) react immediately.
+                    oSessionModel.setProperty("/currentRole", sCurrentRole);
 
                     const oHashChanger = HashChanger.getInstance();
                     const sHash = oHashChanger.getHash();
                     if (!sHash || sHash === "LoginPage") {
                         this.getRouter().navTo(this._getDefaultRouteForRole(sCurrentRole), {}, true);
-                    } else {
-                        this.getRouter().parse(sHash);
                     }
                 }.bind(this))
                 .catch(function (oError) {
