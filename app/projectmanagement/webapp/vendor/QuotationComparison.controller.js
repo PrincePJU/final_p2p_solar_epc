@@ -163,8 +163,9 @@ sap.ui.define([
                             MessageToast.show("A selection reason is required.");
                             return;
                         }
+                        const bIsActiveEntity = oCtx.getProperty("IsActiveEntity") !== undefined ? oCtx.getProperty("IsActiveEntity") : true;
                         const oAction = oVendorModel.bindContext(
-                            "/VendorQuotations(" + sQuotationId + ")/VendorService.selectVendor(...)"
+                            `/VendorQuotations(ID=${sQuotationId},IsActiveEntity=${bIsActiveEntity})/VendorService.selectVendor(...)`
                         );
                         oAction.setParameter("selectionReason", sReason);
                         oAction.execute()

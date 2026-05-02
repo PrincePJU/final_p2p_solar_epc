@@ -864,30 +864,18 @@
             "settings": {
               "contextPath": "/PurchaseOrders",
               "variantManagement": "Page",
-              "navigation": {
-                "PurchaseOrders": {
-                  "detail": {
-                    "route": "POObjectPage"
-                  }
-                }
-              },
               "initialLoad": true,
               "controlConfiguration": {
                 "@com.sap.vocabularies.UI.v1.LineItem": {
                   "tableSettings": {
-                    "type": "ResponsiveTable",
-                    "selectionMode": "Single",
-                    "enableExport": true,
-                    "personalization": {
-                      "column": true,
-                      "sort": true,
-                      "filter": true
-                    }
-                  },
-                  "actions": {
-                    "StandardAction::Delete": {
-                      "visible": false
-                    }
+                    "type": "ResponsiveTable"
+                  }
+                }
+              },
+              "navigation": {
+                "PurchaseOrders": {
+                  "detail": {
+                    "route": "POObjectPage"
                   }
                 }
               }
@@ -902,45 +890,7 @@
             "settings": {
               "contextPath": "/PurchaseOrders",
               "editableHeaderContent": false,
-              "sectionLayout": "Tabs",
-              "controlConfiguration": {
-                "@com.sap.vocabularies.UI.v1.Identification": {
-                  "actions": {
-                    "DataFieldForAction::ProjectService.confirmPO": {
-                      "visible": true
-                    },
-                    "DataFieldForAction::ProjectService.cancelPO": {
-                      "visible": true
-                    },
-                    "DataFieldForAction::ProjectService.closePO": {
-                      "visible": true
-                    }
-                  }
-                },
-                "items/@com.sap.vocabularies.UI.v1.LineItem": {
-                  "tableSettings": {
-                    "type": "ResponsiveTable",
-                    "creationMode": {
-                      "name": "Inline"
-                    },
-                    "selectionMode": "Multi",
-                    "enableExport": true,
-                    "condensedTableLayout": false,
-                    "personalization": {
-                      "column": true,
-                      "sort": true,
-                      "filter": true
-                    }
-                  }
-                },
-                "deliveries/@com.sap.vocabularies.UI.v1.LineItem": {
-                  "tableSettings": {
-                    "type": "ResponsiveTable",
-                    "selectionMode": "Single",
-                    "enableExport": true
-                  }
-                }
-              }
+              "navigation": {}
             }
           }
         },

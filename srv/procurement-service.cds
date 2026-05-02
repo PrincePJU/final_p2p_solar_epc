@@ -266,9 +266,8 @@ annotate ProcurementService.PurchaseOrders with @(
 
   UI.PresentationVariant: {
     SortOrder     : [{ $Type: 'Common.SortOrderType', Property: poDate, Descending: true }],
-    Visualizations: ['@UI.LineItem', '@UI.Chart']
+    Visualizations: ['@UI.LineItem']
   },
-
   // Default filter: hide CANCELLED POs
   UI.SelectionVariant#ActivePOs: {
     SelectOptions: [{
@@ -286,6 +285,13 @@ annotate ProcurementService.PurchaseOrders with @(
 );
 
 annotate ProcurementService.Deliveries with @(
+  UI.LineItem: [
+    { Value: deliveryNumber,  Label: 'Delivery No.'  },
+    { Value: status,          Label: 'Status'        },
+    { Value: scheduledDate,   Label: 'Scheduled Date'},
+    { Value: actualDate,      Label: 'Actual Date'   },
+    { Value: delayDays,       Label: 'Delay Days'    }
+  ],
   UI.Identification: [
     { $Type: 'UI.DataFieldForAction', Action: 'ProcurementService.markInTransit', Label: 'Mark In-Transit' },
     { $Type: 'UI.DataFieldForAction', Action: 'ProcurementService.markDelivered', Label: 'Mark Delivered'  },
