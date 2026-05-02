@@ -24,99 +24,101 @@ module.exports = class ProjectService extends cds.ApplicationService {
       PurchaseOrderItems,
       Deliveries,
       DeliveryItems,
-      MaterialReceipts,
-      MaterialReceiptItems,
+      GRNReceipts,
       Invoices,
       InvoiceItems,
       ThreeWayMatchResults
     } = this.entities;
 
     // ── AUTO-NUMBERING ────────────────────────────────────────────
-    this.before('CREATE', Projects,                              this._generateProjectCode.bind(this));
-    this.before('CREATE', MaterialRequests,                      this._generateRequestNumber.bind(this));
-    this.before('CREATE', ActiveProjects_MaterialRequests,       this._generateRequestNumber.bind(this));
+    this.before('CREATE', Projects, this._generateProjectCode.bind(this));
+    this.before('CREATE', MaterialRequests, this._generateRequestNumber.bind(this));
+    this.before('CREATE', ActiveProjects_MaterialRequests, this._generateRequestNumber.bind(this));
     this.before('CREATE', SeniorActiveProjects_MaterialRequests, this._generateRequestNumber.bind(this));
-    this.before('CREATE', VendorMaster,                          this._generateVendorCode.bind(this));
-    this.before('CREATE', Invoices,                              this._generateInvoiceNumber.bind(this));
+    this.before('CREATE', VendorMaster, this._generateVendorCode.bind(this));
+    this.before('CREATE', Invoices, this._generateInvoiceNumber.bind(this));
 
     // ── DERIVED FIELD CALCULATION ────────────────────────────────
-    this.before('CREATE', MaterialRequestItems,                      this._validateRequestItem.bind(this));
-    this.before('CREATE', ActiveProjects_MaterialRequestItems,       this._validateRequestItem.bind(this));
+    this.before('CREATE', MaterialRequestItems, this._validateRequestItem.bind(this));
+    this.before('CREATE', ActiveProjects_MaterialRequestItems, this._validateRequestItem.bind(this));
     this.before('CREATE', SeniorActiveProjects_MaterialRequestItems, this._validateRequestItem.bind(this));
-    this.before('SAVE',   BOQItems,                                  this._calculateBOQValue.bind(this));
-    this.before('SAVE',   ActiveProjects_BOQItems,                   this._calculateBOQValue.bind(this));
-    this.before('SAVE',   SeniorActiveProjects_BOQItems,             this._calculateBOQValue.bind(this));
-    this.before('CREATE', Invoices,                                  this._validateInvoice.bind(this));
-    this.before(['CREATE','UPDATE'], InvoiceItems,                   this._calculateInvoiceItemAmounts.bind(this));
-    this.after(['CREATE','UPDATE','DELETE'], InvoiceItems, (_, req) => this._recalculateInvoiceTotals(req));
+    this.before('SAVE', BOQItems, this._calculateBOQValue.bind(this));
+    this.before('SAVE', ActiveProjects_BOQItems, this._calculateBOQValue.bind(this));
+    this.before('SAVE', SeniorActiveProjects_BOQItems, this._calculateBOQValue.bind(this));
+    this.before('CREATE', Invoices, this._validateInvoice.bind(this));
+    this.before(['CREATE', 'UPDATE'], InvoiceItems, this._calculateInvoiceItemAmounts.bind(this));
+    this.after(['CREATE', 'UPDATE', 'DELETE'], InvoiceItems, (_, req) => this._recalculateInvoiceTotals(req));
 
     // ── BUSINESS GATING ──────────────────────────────────────────
-    this.before(['CREATE', 'UPDATE', 'DELETE'], BOQItems,                              this._checkProjectActiveGate.bind(this));
-    this.before(['CREATE', 'UPDATE', 'DELETE'], ActiveProjects_BOQItems,               this._checkProjectActiveGate.bind(this));
-    this.before(['CREATE', 'UPDATE', 'DELETE'], MaterialRequests,                      this._checkProjectActiveGate.bind(this));
-    this.before(['CREATE', 'UPDATE', 'DELETE'], ActiveProjects_MaterialRequests,       this._checkProjectActiveGate.bind(this));
+    this.before(['CREATE', 'UPDATE', 'DELETE'], BOQItems, this._checkProjectActiveGate.bind(this));
+    this.before(['CREATE', 'UPDATE', 'DELETE'], ActiveProjects_BOQItems, this._checkProjectActiveGate.bind(this));
+    this.before(['CREATE', 'UPDATE', 'DELETE'], MaterialRequests, this._checkProjectActiveGate.bind(this));
+    this.before(['CREATE', 'UPDATE', 'DELETE'], ActiveProjects_MaterialRequests, this._checkProjectActiveGate.bind(this));
     this.before(['CREATE', 'UPDATE', 'DELETE'], SeniorActiveProjects_MaterialRequests, this._checkProjectActiveGate.bind(this));
-    this.before('UPDATE', Projects,                                                    this._preventHeaderUpdateByEngineer.bind(this));
-    this.before('UPDATE', ActiveProjects,                                              this._preventHeaderUpdateByEngineer.bind(this));
+    this.before('UPDATE', Projects, this._preventHeaderUpdateByEngineer.bind(this));
+    this.before('UPDATE', ActiveProjects, this._preventHeaderUpdateByEngineer.bind(this));
 
     // ── DRAFT ACTIVATION — bypass gate checks for ActiveProjects draft ──
     // CAP fires UPDATE before draftActivate; the handlers above would block
     // activation of engineer-owned drafts. We handle the activate itself
     // explicitly and suppress the gate on IsActiveEntity=false payloads.
-    this.on('draftActivate', ActiveProjects,       this._handleDraftActivate.bind(this));
+    this.on('draftActivate', ActiveProjects, this._handleDraftActivate.bind(this));
     this.on('draftActivate', SeniorActiveProjects, this._handleDraftActivate.bind(this));
 
     // ── PROJECT ACTIONS ───────────────────────────────────────────
-    this.on('activateProject',  Projects, this._activateProject.bind(this));
-    this.on('putOnHold',        Projects, this._putProjectOnHold.bind(this));
-    this.on('completeProject',  Projects, this._completeProject.bind(this));
-    this.on('cancelProject',    Projects, this._cancelProject.bind(this));
+    this.on('activateProject', Projects, this._activateProject.bind(this));
+    this.on('putOnHold', Projects, this._putProjectOnHold.bind(this));
+    this.on('completeProject', Projects, this._completeProject.bind(this));
+    this.on('cancelProject', Projects, this._cancelProject.bind(this));
 
     // ── MATERIAL REQUEST ACTIONS (all entity paths) ───────────────
     const mrEntities = [MaterialRequests, ActiveProjects_MaterialRequests, SeniorActiveProjects_MaterialRequests];
     for (const entity of mrEntities) {
-      this.on('submitRequest',  entity, this._submitRequest.bind(this));
+      this.on('submitRequest', entity, this._submitRequest.bind(this));
       this.on('approveRequest', entity, this._approveRequest.bind(this));
-      this.on('rejectRequest',  entity, this._rejectRequest.bind(this));
-      this.on('closeRequest',   entity, this._closeRequest.bind(this));
+      this.on('rejectRequest', entity, this._rejectRequest.bind(this));
+      this.on('closeRequest', entity, this._closeRequest.bind(this));
     }
 
     // ── VENDOR MASTER ACTIONS ─────────────────────────────────────
-    this.on('activateVendor',   VendorMaster, this._activateVendor.bind(this));
+    this.on('activateVendor', VendorMaster, this._activateVendor.bind(this));
     this.on('deactivateVendor', VendorMaster, this._deactivateVendor.bind(this));
 
     // ── PURCHASE ORDER ACTIONS ─────────────────────────────────
     this.before('CREATE', PurchaseOrders, this._generatePONumber.bind(this));
     this.on('confirmPO', PurchaseOrders, this._confirmPO.bind(this));
-    this.on('cancelPO',  PurchaseOrders, this._cancelPO.bind(this));
-    this.on('closePO',   PurchaseOrders, this._closePO.bind(this));
+    this.on('cancelPO', PurchaseOrders, this._cancelPO.bind(this));
+    this.on('closePO', PurchaseOrders, this._closePO.bind(this));
 
     // ── DELIVERY ACTIONS ────────────────────────────────────────
     this.before('CREATE', Deliveries, this._generateDeliveryNumber.bind(this));
-    this.on('markInTransit',  Deliveries, this._markInTransit.bind(this));
-    this.on('markDelivered',  Deliveries, this._markDelivered.bind(this));
-    this.on('markDelayed',    Deliveries, this._markDelayed.bind(this));
+    this.on('markInTransit', Deliveries, this._markInTransit.bind(this));
+    this.on('markDelivered', Deliveries, this._markDelivered.bind(this));
+    this.on('markDelayed', Deliveries, this._markDelayed.bind(this));
 
-    // ── MATERIAL RECEIPT ACTIONS (GRN) ──────────────────────────
-    this.before('CREATE', MaterialReceipts, this._generateReceiptNumber.bind(this));
-    this.on('verifyReceipt', MaterialReceipts, this._verifyReceipt.bind(this));
-    this.on('rejectReceipt', MaterialReceipts, this._rejectReceipt.bind(this));
+    // ── GRN RECEIPTS (ABAP proxy) ────────────────────────────────
+    this.on('READ', GRNReceipts, this._grnRead.bind(this));
+    this.on('CREATE', GRNReceipts, this._grnCreate.bind(this));
+    this.on('UPDATE', GRNReceipts, this._grnUpdate.bind(this));
+    this.on('DELETE', GRNReceipts, this._grnDelete.bind(this));
+    this.on('verifyReceipt', GRNReceipts, this._grnVerify.bind(this));
+    this.on('rejectReceipt', GRNReceipts, this._grnReject.bind(this));
 
     // ── INVOICE ACTIONS ───────────────────────────────────────────
-    this.on('submitInvoice',        Invoices, this._submitInvoice.bind(this));
+    this.on('submitInvoice', Invoices, this._submitInvoice.bind(this));
     this.on('performThreeWayMatch', Invoices, this._performThreeWayMatch.bind(this));
-    this.on('approveInvoice',       Invoices, this._approveInvoice.bind(this));
-    this.on('rejectInvoice',        Invoices, this._rejectInvoice.bind(this));
-    this.on('markPaid',             Invoices, this._markPaid.bind(this));
+    this.on('approveInvoice', Invoices, this._approveInvoice.bind(this));
+    this.on('rejectInvoice', Invoices, this._rejectInvoice.bind(this));
+    this.on('markPaid', Invoices, this._markPaid.bind(this));
 
     // ── POST-READ ENRICHMENT ──────────────────────────────────────
-    this.after('READ', Projects,                    this._enrichProjects.bind(this));
-    this.after('READ', ActiveProjects,              this._enrichProjects.bind(this));
-    this.after('READ', SeniorActiveProjects,        this._enrichProjects.bind(this));
-    this.after('READ', MaterialRequests,            this._enrichRequests.bind(this));
-    this.after('READ', ActiveProjects_MaterialRequests,       this._enrichRequests.bind(this));
+    this.after('READ', Projects, this._enrichProjects.bind(this));
+    this.after('READ', ActiveProjects, this._enrichProjects.bind(this));
+    this.after('READ', SeniorActiveProjects, this._enrichProjects.bind(this));
+    this.after('READ', MaterialRequests, this._enrichRequests.bind(this));
+    this.after('READ', ActiveProjects_MaterialRequests, this._enrichRequests.bind(this));
     this.after('READ', SeniorActiveProjects_MaterialRequests, this._enrichRequests.bind(this));
-    this.after('READ', ApprovedMaterialRequests,    this._enrichRequests.bind(this));
+    this.after('READ', ApprovedMaterialRequests, this._enrichRequests.bind(this));
 
     await super.init();
   }
@@ -135,12 +137,12 @@ module.exports = class ProjectService extends cds.ApplicationService {
       const match = result.vendorCode.match(/VND-\d{4}-(\d{4})$/);
       if (match) seq = parseInt(match[1]) + 1;
     }
-    req.data.vendorCode       = `VND-${year}-${String(seq).padStart(4, '0')}`;
-    req.data.isActive         = req.data.isActive         ?? true;
+    req.data.vendorCode = `VND-${year}-${String(seq).padStart(4, '0')}`;
+    req.data.isActive = req.data.isActive ?? true;
     req.data.performanceScore = req.data.performanceScore ?? 0;
-    req.data.totalOrders      = req.data.totalOrders      ?? 0;
+    req.data.totalOrders = req.data.totalOrders ?? 0;
     req.data.onTimeDeliveries = req.data.onTimeDeliveries ?? 0;
-    req.data.qualityScore     = req.data.qualityScore     ?? 0;
+    req.data.qualityScore = req.data.qualityScore ?? 0;
   }
 
   async _activateVendor(req) {
@@ -170,16 +172,16 @@ module.exports = class ProjectService extends cds.ApplicationService {
       if (match) seq = parseInt(match[1]) + 1;
     }
     req.data.invoiceNumber = `INV-${year}-${String(seq).padStart(4, '0')}`;
-    req.data.invoiceDate   = req.data.invoiceDate || new Date().toISOString().slice(0, 10);
-    req.data.status        = 'DRAFT';
-    req.data.subtotal      = 0;
-    req.data.taxAmount     = 0;
-    req.data.totalAmount   = 0;
+    req.data.invoiceDate = req.data.invoiceDate || new Date().toISOString().slice(0, 10);
+    req.data.status = 'DRAFT';
+    req.data.subtotal = 0;
+    req.data.taxAmount = 0;
+    req.data.totalAmount = 0;
   }
 
   async _validateInvoice(req) {
     const inv = req.data;
-    if (!inv.vendorInvoiceNo)  return req.error(400, 'Vendor Invoice Number is mandatory', 'vendorInvoiceNo');
+    if (!inv.vendorInvoiceNo) return req.error(400, 'Vendor Invoice Number is mandatory', 'vendorInvoiceNo');
     if (!inv.purchaseOrder_ID) return req.error(400, 'Purchase Order reference is mandatory', 'purchaseOrder_ID');
     const existing = await SELECT.one.from(this.entities.Invoices)
       .where({ vendorInvoiceNo: inv.vendorInvoiceNo, vendor_ID: inv.vendor_ID });
@@ -189,9 +191,9 @@ module.exports = class ProjectService extends cds.ApplicationService {
   _calculateInvoiceItemAmounts(req) {
     const item = req.data;
     if (item.invoicedQty !== undefined && item.unitPrice !== undefined) {
-      const base     = parseFloat((item.invoicedQty * item.unitPrice).toFixed(4));
-      const taxPct   = item.taxPercent ?? 18;
-      item.taxAmount   = parseFloat((base * taxPct / 100).toFixed(2));
+      const base = parseFloat((item.invoicedQty * item.unitPrice).toFixed(4));
+      const taxPct = item.taxPercent ?? 18;
+      item.taxAmount = parseFloat((base * taxPct / 100).toFixed(2));
       item.totalAmount = parseFloat((base + item.taxAmount).toFixed(2));
     }
   }
@@ -203,8 +205,8 @@ module.exports = class ProjectService extends cds.ApplicationService {
     let subtotal = 0, taxAmount = 0;
     for (const item of items) {
       const base = parseFloat(((item.invoicedQty || 0) * (item.unitPrice || 0)).toFixed(4));
-      const tax  = parseFloat((base * (item.taxPercent || 18) / 100).toFixed(2));
-      subtotal  += base;
+      const tax = parseFloat((base * (item.taxPercent || 18) / 100).toFixed(2));
+      subtotal += base;
       taxAmount += tax;
     }
     await UPDATE(this.entities.Invoices)
@@ -231,13 +233,13 @@ module.exports = class ProjectService extends cds.ApplicationService {
     const { ID } = req.params[0];
     const inv = await SELECT.one.from(this.entities.Invoices).where({ ID });
     if (!inv) return req.error(404, `Invoice ${ID} not found`);
-    if (!['SUBMITTED','UNDER_REVIEW','MISMATCH'].includes(inv.status))
+    if (!['SUBMITTED', 'UNDER_REVIEW', 'MISMATCH'].includes(inv.status))
       return req.error(400, `Cannot run three-way match on invoice in status: ${inv.status}`);
     if (!inv.receipt_ID) return req.error(400, 'Invoice must be linked to a Material Receipt before three-way match');
 
-    const invItems    = await SELECT.from(this.entities.InvoiceItems).where({ invoice_ID: ID });
-    const poItems     = await SELECT.from(cds.entities('solar.epc').PurchaseOrderItems).where({ purchaseOrder_ID: inv.purchaseOrder_ID });
-    const receiptItems= await SELECT.from(cds.entities('solar.epc').MaterialReceiptItems).where({ receipt_ID: inv.receipt_ID });
+    const invItems = await SELECT.from(this.entities.InvoiceItems).where({ invoice_ID: ID });
+    const poItems = await SELECT.from(cds.entities('solar.epc').PurchaseOrderItems).where({ purchaseOrder_ID: inv.purchaseOrder_ID });
+    const receiptItems = await SELECT.from(cds.entities('solar.epc').MaterialReceiptItems).where({ receipt_ID: inv.receipt_ID });
 
     await DELETE.from(this.entities.ThreeWayMatchResults).where({ invoice_ID: ID });
 
@@ -245,28 +247,28 @@ module.exports = class ProjectService extends cds.ApplicationService {
     const records = [];
 
     for (const invItem of invItems) {
-      const poItem      = poItems.find(p => p.ID === invItem.poItem_ID || p.material_ID === invItem.material_ID);
+      const poItem = poItems.find(p => p.ID === invItem.poItem_ID || p.material_ID === invItem.material_ID);
       const receiptItem = receiptItems.find(r => r.material_ID === invItem.material_ID || (poItem && r.poItem_ID === poItem.ID));
 
-      const poQty      = poItem?.orderedQty      || 0;
-      const receivedQty= receiptItem?.acceptedQty || 0;
-      const invoicedQty= invItem.invoicedQty      || 0;
-      const poPrice    = poItem?.unitPrice         || 0;
-      const invPrice   = invItem.unitPrice         || 0;
+      const poQty = poItem?.orderedQty || 0;
+      const receivedQty = receiptItem?.acceptedQty || 0;
+      const invoicedQty = invItem.invoicedQty || 0;
+      const poPrice = poItem?.unitPrice || 0;
+      const invPrice = invItem.unitPrice || 0;
 
-      const qtyOk   = Math.abs(invoicedQty - receivedQty) <= 0.001;
-      const priceOk = Math.abs(invPrice - poPrice)        <= 0.01;
+      const qtyOk = Math.abs(invoicedQty - receivedQty) <= 0.001;
+      const priceOk = Math.abs(invPrice - poPrice) <= 0.01;
 
-      const quantityMatch = qtyOk   ? 'MATCHED' : 'QUANTITY_MISMATCH';
-      const priceMatch    = priceOk ? 'MATCHED' : 'PRICE_MISMATCH';
-      let   lineStatus;
-      if      ( qtyOk &&  priceOk) { lineStatus = 'MATCHED'; }
-      else if (!qtyOk && !priceOk) { lineStatus = 'BOTH_MISMATCH';     overallStatus = 'BOTH_MISMATCH'; }
-      else if (!qtyOk)             { lineStatus = 'QUANTITY_MISMATCH'; if (overallStatus === 'MATCHED') overallStatus = 'QUANTITY_MISMATCH'; }
-      else                         { lineStatus = 'PRICE_MISMATCH';    if (overallStatus === 'MATCHED') overallStatus = 'PRICE_MISMATCH'; }
+      const quantityMatch = qtyOk ? 'MATCHED' : 'QUANTITY_MISMATCH';
+      const priceMatch = priceOk ? 'MATCHED' : 'PRICE_MISMATCH';
+      let lineStatus;
+      if (qtyOk && priceOk) { lineStatus = 'MATCHED'; }
+      else if (!qtyOk && !priceOk) { lineStatus = 'BOTH_MISMATCH'; overallStatus = 'BOTH_MISMATCH'; }
+      else if (!qtyOk) { lineStatus = 'QUANTITY_MISMATCH'; if (overallStatus === 'MATCHED') overallStatus = 'QUANTITY_MISMATCH'; }
+      else { lineStatus = 'PRICE_MISMATCH'; if (overallStatus === 'MATCHED') overallStatus = 'PRICE_MISMATCH'; }
 
-      const qtyVariance   = parseFloat((invoicedQty - receivedQty).toFixed(3));
-      const priceVariance = parseFloat((invPrice    - poPrice).toFixed(4));
+      const qtyVariance = parseFloat((invoicedQty - receivedQty).toFixed(3));
+      const priceVariance = parseFloat((invPrice - poPrice).toFixed(4));
       records.push({
         ID: cds.utils.uuid(), invoice_ID: ID,
         purchaseOrder_ID: inv.purchaseOrder_ID, receipt_ID: inv.receipt_ID,
@@ -290,7 +292,7 @@ module.exports = class ProjectService extends cds.ApplicationService {
     const { ID } = req.params[0];
     const inv = await SELECT.one.from(this.entities.Invoices).where({ ID });
     if (!inv) return req.error(404, `Invoice ${ID} not found`);
-    if (!['MATCHED','MISMATCH','UNDER_REVIEW'].includes(inv.status))
+    if (!['MATCHED', 'MISMATCH', 'UNDER_REVIEW'].includes(inv.status))
       return req.error(400, `Invoice must be MATCHED or UNDER_REVIEW to approve. Current: ${inv.status}`);
     await UPDATE(this.entities.Invoices).set({ status: 'APPROVED', approvalDate: new Date().toISOString() }).where({ ID });
     // Update project spent amount
@@ -308,7 +310,7 @@ module.exports = class ProjectService extends cds.ApplicationService {
     if (!reason) return req.error(400, 'Rejection reason is mandatory');
     const inv = await SELECT.one.from(this.entities.Invoices).where({ ID });
     if (!inv) return req.error(404, `Invoice ${ID} not found`);
-    if (['PAID','REJECTED'].includes(inv.status)) return req.error(400, `Cannot reject invoice in status: ${inv.status}`);
+    if (['PAID', 'REJECTED'].includes(inv.status)) return req.error(400, `Cannot reject invoice in status: ${inv.status}`);
     await UPDATE(this.entities.Invoices).set({ status: 'REJECTED', rejectionReason: reason }).where({ ID });
     const vm = await SELECT.one.from(cds.entities('solar.epc').VendorMaster).where({ ID: inv.vendor_ID });
     if (vm) await UPDATE(cds.entities('solar.epc').VendorMaster).set({ performanceScore: parseFloat(Math.max(0, (vm.performanceScore || 5) - 0.3).toFixed(2)) }).where({ ID: inv.vendor_ID });
@@ -343,9 +345,9 @@ module.exports = class ProjectService extends cds.ApplicationService {
       if (match) seq = parseInt(match[1]) + 1;
     }
     req.data.projectCode = `PRJ-${year}-${String(seq).padStart(4, '0')}`;
-    req.data.requestDate  = req.data.requestDate || new Date().toISOString().slice(0, 10);
-    req.data.status       = 'DRAFT';
-    req.data.spentAmount  = 0;
+    req.data.requestDate = req.data.requestDate || new Date().toISOString().slice(0, 10);
+    req.data.status = 'DRAFT';
+    req.data.spentAmount = 0;
   }
 
   async _generateRequestNumber(req) {
@@ -361,9 +363,9 @@ module.exports = class ProjectService extends cds.ApplicationService {
       if (match) seq = parseInt(match[1]) + 1;
     }
     req.data.requestNumber = `MR-${year}-${String(seq).padStart(4, '0')}`;
-    req.data.requestDate   = req.data.requestDate || new Date().toISOString().slice(0, 10);
-    req.data.status        = 'DRAFT';
-    req.data.priority      = req.data.priority || 'MEDIUM';
+    req.data.requestDate = req.data.requestDate || new Date().toISOString().slice(0, 10);
+    req.data.status = 'DRAFT';
+    req.data.priority = req.data.priority || 'MEDIUM';
 
     // Auto-fill requestedBy from the logged-in user
     if (!req.data.requestedBy_ID && req.user?.id) {
@@ -567,9 +569,9 @@ module.exports = class ProjectService extends cds.ApplicationService {
     }
     await UPDATE(this.entities.MaterialRequests)
       .set({
-        status       : 'APPROVED',
-        approvalDate : new Date().toISOString(),
-        remarks      : approvalRemarks || mr.remarks,
+        status: 'APPROVED',
+        approvalDate: new Date().toISOString(),
+        remarks: approvalRemarks || mr.remarks,
         approvedBy_ID: req.user?.id || null
       })
       .where({ ID });
@@ -646,9 +648,9 @@ module.exports = class ProjectService extends cds.ApplicationService {
 
   _projectStatusCriticality(status) {
     const map = {
-      DRAFT    : 0,  // Neutral
-      ACTIVE   : 3,  // Positive
-      ON_HOLD  : 2,  // Critical
+      DRAFT: 0,  // Neutral
+      ACTIVE: 3,  // Positive
+      ON_HOLD: 2,  // Critical
       COMPLETED: 3,  // Positive
       CANCELLED: 1   // Negative
     };
@@ -657,12 +659,12 @@ module.exports = class ProjectService extends cds.ApplicationService {
 
   _requestStatusCriticality(status) {
     const map = {
-      DRAFT    : 0,
+      DRAFT: 0,
       SUBMITTED: 2,
-      APPROVED : 3,
-      REJECTED : 1,
-      ORDERED  : 3,
-      CLOSED   : 0
+      APPROVED: 3,
+      REJECTED: 1,
+      ORDERED: 3,
+      CLOSED: 0
     };
     return map[status] ?? 0;
   }
@@ -677,20 +679,20 @@ module.exports = class ProjectService extends cds.ApplicationService {
     const last = await SELECT.one.from(this.entities.PurchaseOrders).columns('poNumber').orderBy('createdAt desc');
     let seq = 1;
     if (last?.poNumber) { const m = last.poNumber.match(/PO-\d{4}-(\d{4})$/); if (m) seq = parseInt(m[1]) + 1; }
-    req.data.poNumber   = `PO-${year}-${String(seq).padStart(4, '0')}`;
-    req.data.poDate     = req.data.poDate    || new Date().toISOString().slice(0, 10);
-    req.data.status     = req.data.status    || 'DRAFT';
-    req.data.subtotal   = req.data.subtotal  ?? 0;
-    req.data.taxAmount  = req.data.taxAmount ?? 0;
-    req.data.grandTotal = req.data.grandTotal?? 0;
-    req.data.currency   = req.data.currency  || 'INR';
+    req.data.poNumber = `PO-${year}-${String(seq).padStart(4, '0')}`;
+    req.data.poDate = req.data.poDate || new Date().toISOString().slice(0, 10);
+    req.data.status = req.data.status || 'DRAFT';
+    req.data.subtotal = req.data.subtotal ?? 0;
+    req.data.taxAmount = req.data.taxAmount ?? 0;
+    req.data.grandTotal = req.data.grandTotal ?? 0;
+    req.data.currency = req.data.currency || 'INR';
   }
 
   async _confirmPO(req) {
     const { ID } = req.params[0];
     const po = await SELECT.one.from(this.entities.PurchaseOrders).where({ ID });
     if (!po) return req.error(404, `PO not found`);
-    if (!['DRAFT','PENDING'].includes(po.status)) return req.error(400, `Cannot confirm PO in status ${po.status}`);
+    if (!['DRAFT', 'PENDING'].includes(po.status)) return req.error(400, `Cannot confirm PO in status ${po.status}`);
     await UPDATE(this.entities.PurchaseOrders).set({ status: 'CONFIRMED' }).where({ ID });
     return SELECT.one.from(this.entities.PurchaseOrders).where({ ID });
   }
@@ -700,7 +702,7 @@ module.exports = class ProjectService extends cds.ApplicationService {
     const { reason } = req.data;
     const po = await SELECT.one.from(this.entities.PurchaseOrders).where({ ID });
     if (!po) return req.error(404, `PO not found`);
-    if (['CLOSED','CANCELLED'].includes(po.status)) return req.error(400, `PO is already ${po.status}`);
+    if (['CLOSED', 'CANCELLED'].includes(po.status)) return req.error(400, `PO is already ${po.status}`);
     await UPDATE(this.entities.PurchaseOrders).set({ status: 'CANCELLED', remarks: reason || '' }).where({ ID });
     return SELECT.one.from(this.entities.PurchaseOrders).where({ ID });
   }
@@ -725,8 +727,8 @@ module.exports = class ProjectService extends cds.ApplicationService {
     let seq = 1;
     if (last?.deliveryNumber) { const m = last.deliveryNumber.match(/DEL-\d{4}-(\d{4})$/); if (m) seq = parseInt(m[1]) + 1; }
     req.data.deliveryNumber = `DEL-${year}-${String(seq).padStart(4, '0')}`;
-    req.data.status         = req.data.status || 'SCHEDULED';
-    req.data.delayDays      = req.data.delayDays ?? 0;
+    req.data.status = req.data.status || 'SCHEDULED';
+    req.data.delayDays = req.data.delayDays ?? 0;
   }
 
   async _markInTransit(req) {
@@ -743,7 +745,7 @@ module.exports = class ProjectService extends cds.ApplicationService {
     const actualD = new Date(actualDate || new Date());
     const delayDays = Math.max(0, Math.round((actualD - new Date(del.scheduledDate)) / 86400000));
     await UPDATE(this.entities.Deliveries)
-      .set({ status: 'DELIVERED', actualDate: actualDate || new Date().toISOString().slice(0,10), delayDays })
+      .set({ status: 'DELIVERED', actualDate: actualDate || new Date().toISOString().slice(0, 10), delayDays })
       .where({ ID });
     return SELECT.one.from(this.entities.Deliveries).where({ ID });
   }
@@ -758,39 +760,193 @@ module.exports = class ProjectService extends cds.ApplicationService {
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // MATERIAL RECEIPTS (GRN)
+  // GRN RECEIPTS — ABAP Proxy (ZUI_MAT_RECEIPT_BIND / Z_C_MAT_RECEIPT)
   // ═══════════════════════════════════════════════════════════════
 
-  async _generateReceiptNumber(req) {
-    if (req.data.receiptNumber) return;
-    const year = new Date().getFullYear();
-    const last = await SELECT.one.from(this.entities.MaterialReceipts).columns('receiptNumber').orderBy('createdAt desc');
-    let seq = 1;
-    if (last?.receiptNumber) { const m = last.receiptNumber.match(/GRN-\d{4}-(\d{4})$/); if (m) seq = parseInt(m[1]) + 1; }
-    req.data.receiptNumber = `GRN-${year}-${String(seq).padStart(4, '0')}`;
-    req.data.receiptDate   = req.data.receiptDate || new Date().toISOString().slice(0, 10);
-    req.data.status        = req.data.status || 'PENDING';
+  // The ABAP entity set is Z_C_MAT_RECEIPT — NOT GRNReceipts.
+  // All queries must explicitly target this name.
+  static ABAP_GRN = 'Z_C_MAT_RECEIPT';
+
+  async _getRapService() {
+    if (!this._rapSvc) {
+      this._rapSvc = await cds.connect.to('RAP_SERVICE');
+    }
+    return this._rapSvc;
   }
 
-  async _verifyReceipt(req) {
-    const { ID } = req.params[0];
-    const { verificationRemarks } = req.data;
-    const receipt = await SELECT.one.from(this.entities.MaterialReceipts).where({ ID });
-    if (!receipt) return req.error(404, `Receipt not found`);
-    if (!['PENDING','RECEIVED'].includes(receipt.status)) return req.error(400, `Cannot verify receipt in status ${receipt.status}`);
-    await UPDATE(this.entities.MaterialReceipts)
-      .set({ status: 'VERIFIED', overallRemarks: verificationRemarks || '', verificationDate: new Date().toISOString().slice(0,10) })
-      .where({ ID });
-    return SELECT.one.from(this.entities.MaterialReceipts).where({ ID });
+
+  // ── Direct ABAP HTTPS helper ─────────────────────────────────────────────
+  // Bypasses CAP remote service for mutating ops because svc.tx({ headers })
+  // does NOT forward custom headers to the underlying HTTP client.
+  // This method: 1) fetches CSRF token + session cookie, 2) sends the actual
+  // request with both, keeping the session alive across both calls.
+  async _abapRequest({ method, key, payload }) {
+    const https = require('https');
+    const creds = cds.env.requires.RAP_SERVICE.credentials;
+    const base  = new URL(creds.url);
+    const auth  = Buffer.from(`${creds.username}:${creds.password}`).toString('base64');
+    const eset  = ProjectService.ABAP_GRN;
+
+    const commonHeaders = {
+      'Authorization'      : `Basic ${auth}`,
+      'sap-client'         : '100',
+      'DataServiceVersion' : '2.0',
+      'MaxDataServiceVersion': '2.0',
+      'Accept'             : 'application/json'
+    };
+
+    // ── Step 1: Fetch CSRF token + session cookie ─────────────────
+    const { token, sessionCookie } = await new Promise((resolve, reject) => {
+      const r = https.request({
+        hostname: base.hostname, port: base.port || 443,
+        path: base.pathname + '/', method: 'GET',
+        headers: { ...commonHeaders, 'X-CSRF-Token': 'Fetch' },
+        rejectUnauthorized: false
+      }, (res) => {
+        const token = res.headers['x-csrf-token'];
+        const rawCookies = res.headers['set-cookie'] || [];
+        // Only keep the name=value part; strip Path/Secure/HttpOnly attributes
+        const sessionCookie = rawCookies.map(c => c.split(';')[0]).join('; ');
+        res.resume(); // drain to free socket
+        if (token && token !== 'Required') {
+          console.log(`[GRN CSRF] ✅ Token: ${token.substring(0, 8)}...  Cookie: ${sessionCookie.substring(0, 30)}...`);
+          resolve({ token, sessionCookie });
+        } else {
+          reject(new Error('ABAP did not return X-CSRF-Token'));
+        }
+      });
+      r.on('error', reject);
+      r.end();
+    });
+
+    // ── Step 2: Actual mutating request ───────────────────────────
+    const path = key
+      ? `${base.pathname}/${eset}('${encodeURIComponent(key)}')`
+      : `${base.pathname}/${eset}`;
+    const body = payload ? JSON.stringify(payload) : null;
+
+    return new Promise((resolve, reject) => {
+      const mutHeaders = {
+        ...commonHeaders,
+        'X-CSRF-Token' : token,
+        'Cookie'       : sessionCookie
+      };
+      if (body) {
+        mutHeaders['Content-Type']   = 'application/json';
+        mutHeaders['Content-Length'] = Buffer.byteLength(body);
+      }
+
+      const r = https.request({
+        hostname: base.hostname, port: base.port || 443,
+        path, method, headers: mutHeaders,
+        rejectUnauthorized: false
+      }, (res) => {
+        let data = '';
+        res.on('data', chunk => data += chunk);
+        res.on('end', () => {
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            try { resolve(data ? JSON.parse(data) : null); }
+            catch { resolve(null); }
+          } else {
+            reject(new Error(`ABAP ${method} ${path} failed: ${res.statusCode} ${data}`));
+          }
+        });
+      });
+      r.on('error', reject);
+      if (body) r.write(body);
+      r.end();
+    });
   }
 
-  async _rejectReceipt(req) {
-    const { ID } = req.params[0];
-    const { rejectionReason } = req.data;
-    await UPDATE(this.entities.MaterialReceipts)
-      .set({ status: 'REJECTED', overallRemarks: rejectionReason || '' })
-      .where({ ID });
-    return SELECT.one.from(this.entities.MaterialReceipts).where({ ID });
+
+  async _grnRead(req) {
+    const svc = await this._getRapService();
+    // Build CQN targeting the ABAP entity, propagating filter/select/paging
+    const q = SELECT.from(ProjectService.ABAP_GRN);
+    const s = req.query.SELECT;
+    if (s?.columns?.length) q.columns(s.columns);
+    if (s?.where?.length) q.where(s.where);
+    if (s?.orderBy?.length) q.orderBy(s.orderBy);
+    if (s?.limit?.rows) q.limit(s.limit.rows.val, s.limit.offset?.val ?? 0);
+    const results = await svc.run(q);
+    // OData V2 returns dates as /Date(ms+offset)/ — convert to ISO for OData V4 client
+    if (Array.isArray(results)) results.forEach(r => this._normalizeGRNDates(r));
+    else if (results) this._normalizeGRNDates(results);
+    return results;
+  }
+
+  _normalizeGRNDates(record) {
+    if (!record) return;
+    if (record.CreatedAt) record.CreatedAt = this._parseV2Date(record.CreatedAt);
+    // Strip ABAP RAP metadata control fields — not in GRNReceipts entity
+    delete record.Delete_mc;
+    delete record.Update_mc;
+  }
+
+  _parseV2Date(val) {
+    if (!val || typeof val !== 'string') return val;
+    const m = val.match(/\/Date\((-?\d+)([+-]\d{4})?\)\//);
+    if (m) return new Date(parseInt(m[1])).toISOString();
+    return val; // already ISO or null
+  }
+
+
+  async _grnCreate(req) {
+    console.log('[GRN Logger] 🔵 Fired: CREATE Receipt');
+    console.log('[GRN Logger] 🔵 Payload:', JSON.stringify(req.data, null, 2));
+    const payload = { ...req.data };
+    delete payload.CreatedAt;
+    const result = await this._abapRequest({ method: 'POST', payload });
+    return result?.d ?? payload;
+  }
+
+  async _grnUpdate(req) {
+    const { ReceiptID } = req.params[0];
+    console.log(`[GRN Logger] 🟡 Fired: UPDATE Receipt (${ReceiptID})`);
+    console.log(`[GRN Logger] 🟡 Payload:`, JSON.stringify(req.data, null, 2));
+    if (!ReceiptID) return req.error(400, 'Cannot update a receipt with no Receipt ID');
+    const payload = { ...req.data };
+    delete payload.ReceiptID;
+    delete payload.CreatedAt;
+    await this._abapRequest({ method: 'PATCH', key: ReceiptID, payload });
+    const svc = await this._getRapService();
+    return svc.run(SELECT.one.from(ProjectService.ABAP_GRN).where({ ReceiptID }));
+  }
+
+  async _grnDelete(req) {
+    const { ReceiptID } = req.params[0];
+    console.log(`[GRN Logger] 🗑️ Fired: DELETE Receipt (${ReceiptID})`);
+    if (!ReceiptID) return req.error(400, 'Cannot delete a receipt with no Receipt ID');
+    await this._abapRequest({ method: 'DELETE', key: ReceiptID });
+    // return undefined → CAP sends 204 No Content
+  }
+
+  async _grnVerify(req) {
+    const { ReceiptID } = req.params[0];
+    const { remarks } = req.data;
+    console.log(`[GRN Logger] 🟢 Fired: ACTION verifyReceipt (${ReceiptID})`);
+    if (!ReceiptID) return req.error(400, 'Cannot verify a receipt with no Receipt ID');
+    const svc = await this._getRapService();
+    const rec = await svc.run(SELECT.one.from(ProjectService.ABAP_GRN).where({ ReceiptID }));
+    if (!rec) return req.error(404, `GRN Receipt ${ReceiptID} not found`);
+    if (!['OPEN', 'PENDING'].includes(rec.Status))
+      return req.error(400, `Cannot verify receipt in status: ${rec.Status}`);
+    await this._abapRequest({ method: 'PATCH', key: ReceiptID,
+      payload: { Status: 'VERIFIED', Remarks: remarks || rec.Remarks || '' } });
+    return svc.run(SELECT.one.from(ProjectService.ABAP_GRN).where({ ReceiptID }));
+  }
+
+  async _grnReject(req) {
+    const { ReceiptID } = req.params[0];
+    const { reason } = req.data;
+    console.log(`[GRN Logger] 🔴 Fired: ACTION rejectReceipt (${ReceiptID})`);
+    if (!ReceiptID) return req.error(400, 'Cannot reject a receipt with no Receipt ID');
+    if (!reason) return req.error(400, 'Rejection reason is mandatory');
+    const svc = await this._getRapService();
+    await this._abapRequest({ method: 'PATCH', key: ReceiptID,
+      payload: { Status: 'REJECTED', Remarks: reason } });
+    return svc.run(SELECT.one.from(ProjectService.ABAP_GRN).where({ ReceiptID }));
   }
 };
+
 

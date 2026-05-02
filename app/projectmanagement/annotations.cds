@@ -448,12 +448,12 @@ annotate service.ActiveProjects with {
   
   boqItems @(
     Capabilities.InsertRestrictions: { Insertable: true },
-    Capabilities.DeleteRestrictions: { Deletable: true },
+    Capabilities.DeleteRestrictions: { Deletable: false },
     Capabilities.UpdateRestrictions: { Updatable: true }
   );
   materialRequests @(
     Capabilities.InsertRestrictions: { Insertable: true },
-    Capabilities.DeleteRestrictions: { Deletable: true },
+    Capabilities.DeleteRestrictions: { Deletable: false },
     Capabilities.UpdateRestrictions: { Updatable: true }
   );
   budget         @Common.FieldControl: #ReadOnly;
@@ -1201,7 +1201,6 @@ annotate service.ThreeWayMatchResults with @(
 // ═══════════════════════════════════════════════════════════════
 
 using ProcurementService from '../../srv/procurement-service';
-using ReceiptService from '../../srv/receipt-service';
 
 annotate ProcurementService.Deliveries with @(
   UI.HeaderInfo: {
@@ -1237,39 +1236,6 @@ annotate ProcurementService.Deliveries with @(
   }
 );
 
-annotate ReceiptService.MaterialReceipts with @(
-  UI.HeaderInfo: {
-    TypeName: 'Material Receipt',
-    TypeNamePlural: 'Material Receipts',
-    Title: { $Type: 'UI.DataField', Value: receiptNumber },
-    Description: { $Type: 'UI.DataField', Value: status }
-  },
-  UI.SelectionFields: [ status, purchaseOrder_ID ],
-  UI.LineItem: [
-    { $Type: 'UI.DataField', Value: receiptNumber, Label: 'Receipt No.' },
-    { $Type: 'UI.DataField', Value: delivery_ID, Label: 'Delivery' },
-    { $Type: 'UI.DataField', Value: purchaseOrder_ID, Label: 'PO Number' },
-    { $Type: 'UI.DataField', Value: receiptDate, Label: 'Receipt Date' },
-    { $Type: 'UI.DataField', Value: status, Label: 'Status' }
-  ],
-  UI.Facets: [
-    {
-      $Type: 'UI.ReferenceFacet',
-      Target: '@UI.FieldGroup#ReceiptDetails',
-      Label: 'Receipt Details'
-    }
-  ],
-  UI.FieldGroup#ReceiptDetails: {
-    Data: [
-      { $Type: 'UI.DataField', Value: receiptNumber },
-      { $Type: 'UI.DataField', Value: delivery_ID },
-      { $Type: 'UI.DataField', Value: purchaseOrder_ID },
-      { $Type: 'UI.DataField', Value: receiptDate },
-      { $Type: 'UI.DataField', Value: receivedBy_ID },
-      { $Type: 'UI.DataField', Value: status }
-    ]
-  }
-);
 
 // ═══════════════════════════════════════════════════════════════
 // PURCHASE ORDERS — UI Annotations
@@ -1469,3 +1435,79 @@ annotate service.PurchaseOrderItems with @(
     { $Type: 'UI.DataField', Value: deliveredQty, Label: 'Delivered Qty' }
   ]
 );
+
+// ═══════════════════════════════════════════════════════════════
+// MATERIAL RECEIPTS (GRN) — UI Annotations
+// Entity: ProjectService.MaterialReceipts (flat, no draft, ABAP proxy)
+// Fields: ReceiptID, Material, Quantity, PONumber, Supplier,
+//         Unit, Status, Remarks, CreatedAt (readonly)
+// ═══════════════════════════════════════════════════════════════
+
+annotate service.GRNReceipts with @(
+
+  Capabilities.InsertRestrictions : { Insertable: true },
+  Capabilities.DeleteRestrictions : { Deletable: true },
+  Capabilities.UpdateRestrictions : { Updatable: true },
+
+  UI.SelectionFields: [ Status, PONumber, Supplier ],
+
+  UI.LineItem: [
+    { $Type: 'UI.DataField', Value: ReceiptID,  Label: 'Receipt ID',  ![@UI.Importance]: #High   },
+    { $Type: 'UI.DataField', Value: Material,   Label: 'Material',    ![@UI.Importance]: #High   },
+    { $Type: 'UI.DataField', Value: Quantity,   Label: 'Qty',         ![@UI.Importance]: #Medium },
+    { $Type: 'UI.DataField', Value: Unit,       Label: 'Unit',        ![@UI.Importance]: #Low    },
+    { $Type: 'UI.DataField', Value: PONumber,   Label: 'PO Number',   ![@UI.Importance]: #Medium },
+    { $Type: 'UI.DataField', Value: Supplier,   Label: 'Supplier',    ![@UI.Importance]: #Medium },
+    { $Type: 'UI.DataField', Value: Status,     Label: 'Status',      ![@UI.Importance]: #High   },
+    { $Type: 'UI.DataField', Value: CreatedAt,  Label: 'Created On',  ![@UI.Importance]: #Low    },
+    // Actions appear in table toolbar when a row is selected
+    { $Type: 'UI.DataFieldForAction', Action: 'ProjectService.verifyReceipt', Label: 'Verify', Inline: false, ![@UI.Importance]: #High },
+    { $Type: 'UI.DataFieldForAction', Action: 'ProjectService.rejectReceipt', Label: 'Reject',  Inline: false, ![@UI.Importance]: #High }
+  ],
+
+  UI.HeaderInfo: {
+    TypeName      : 'Material Receipt (GRN)',
+    TypeNamePlural: 'Material Receipts',
+    Title         : { $Type: 'UI.DataField', Value: ReceiptID },
+    Description   : { $Type: 'UI.DataField', Value: Status }
+  },
+
+  UI.Identification: [
+    { $Type: 'UI.DataFieldForAction', Action: 'ProjectService.verifyReceipt', Label: 'Verify Receipt' },
+    { $Type: 'UI.DataFieldForAction', Action: 'ProjectService.rejectReceipt', Label: 'Reject Receipt'  }
+  ],
+
+  UI.Facets: [
+    { $Type: 'UI.ReferenceFacet', ID: 'GRNDetails', Label: 'Receipt Details', Target: '@UI.FieldGroup#GRNDetails' }
+  ],
+
+  UI.FieldGroup#GRNDetails: {
+    Label: 'Receipt Details',
+    Data : [
+      { $Type: 'UI.DataField', Value: ReceiptID  },
+      { $Type: 'UI.DataField', Value: Material   },
+      { $Type: 'UI.DataField', Value: Quantity   },
+      { $Type: 'UI.DataField', Value: Unit       },
+      { $Type: 'UI.DataField', Value: PONumber   },
+      { $Type: 'UI.DataField', Value: Supplier   },
+      { $Type: 'UI.DataField', Value: Status     },
+      { $Type: 'UI.DataField', Value: Remarks    },
+      { $Type: 'UI.DataField', Value: CreatedAt  }
+    ]
+  }
+);
+
+annotate service.GRNReceipts with {
+  ReceiptID  @title: 'Receipt ID'   @Core.Immutable: true;  // editable on Create, locked on Update
+  Material   @title: 'Material'     @mandatory;
+  Quantity   @title: 'Quantity'     @mandatory;
+  Unit       @title: 'Unit';
+  PONumber   @title: 'PO Number';
+  Supplier   @title: 'Supplier';
+  Status     @title: 'Status'       @Core.Computed: true;   // always system-controlled
+  Remarks    @title: 'Remarks'      @UI.MultiLineText: true;
+  CreatedAt  @title: 'Created On'   @Core.Computed: true;   // always system-managed
+}
+
+
+

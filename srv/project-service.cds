@@ -347,25 +347,31 @@ service ProjectService @(path: '/project') {
   };
 
   // ── MATERIAL RECEIPTS (GRN) ───────────────────────────────────
-  @restrict: [
-    { grant: ['READ'],                    to: ['BDM','Engineer','ProjectManager','Management','ProcurementOfficer','FinanceOfficer'] },
-    { grant: ['CREATE','UPDATE'],         to: ['ProcurementOfficer','Management'] },
-    { grant: ['verifyReceipt','rejectReceipt'], to: ['ProcurementOfficer','Management'] }
-  ]
-  entity MaterialReceipts as projection on epc.MaterialReceipts {
-    *,
-    delivery      : redirected to Deliveries,
-    purchaseOrder : redirected to PurchaseOrders,
-    items         : redirected to MaterialReceiptItems
+  // Named GRNReceipts to avoid collision with CAP auto-exposed epc.MaterialReceipts.
+  // Flat entity — NOT a projection. Handlers proxy to ABAP ZUI_MAT_RECEIPT_BIND.
+  //
+  // NOTE: @restrict is intentionally NOT used here because CAP derives
+  //       Capabilities.InsertRestrictions.Insertable:false from role-based @restrict,
+  //       which hides the Create button in Fiori Elements regardless of explicit
+  //       @Capabilities overrides. @requires enforces auth without touching capabilities.
+  //       Handler-level role checks enforce CREATE/UPDATE vs READ granularity.
+  @requires: ['SiteEngineer','ProcurementOfficer','Management','ProjectManager']
+  @Capabilities.InsertRestrictions : { Insertable: true }
+  @Capabilities.DeleteRestrictions : { Deletable : true }
+  @Capabilities.UpdateRestrictions : { Updatable : true }
+  entity GRNReceipts {
+    key ReceiptID : String(50)  @mandatory;
+        Material  : String(40)  @mandatory;
+        Quantity  : Integer     @mandatory;
+        PONumber  : String(20);
+        Supplier  : String(100);
+        Unit      : String(3);
+        Status    : String(20)  default 'OPEN';
+        Remarks   : String(500);
+        CreatedAt : Timestamp   @readonly @cds.on.insert: $now;
   } actions {
-    action verifyReceipt(verificationRemarks: String(500)) returns MaterialReceipts;
-    action rejectReceipt(rejectionReason: String(500))     returns MaterialReceipts;
-  };
-
-  entity MaterialReceiptItems as projection on epc.MaterialReceiptItems {
-    *,
-    receipt  : redirected to MaterialReceipts,
-    material : redirected to MaterialMaster
+    action verifyReceipt(remarks : String(500)) returns GRNReceipts;
+    action rejectReceipt(reason  : String(500)) returns GRNReceipts;
   };
 
   // ── INVOICES ──────────────────────────────────────────────────
@@ -378,7 +384,7 @@ service ProjectService @(path: '/project') {
     *,
     vendor         : redirected to VendorMaster,
     purchaseOrder  : redirected to PurchaseOrders,
-    receipt        : redirected to MaterialReceipts,
+    // receipt not redirected — epc.Invoices.receipt → epc.MaterialReceipts (schema level, not our flat GRNReceipts)
     submittedBy    : redirected to Users,
     reviewedBy     : redirected to Users,
     approvedBy     : redirected to Users,
@@ -394,10 +400,10 @@ service ProjectService @(path: '/project') {
 
   entity InvoiceItems as projection on epc.InvoiceItems {
     *,
-    invoice     : redirected to Invoices,
-    poItem      : redirected to PurchaseOrderItems,
-    receiptItem : redirected to MaterialReceiptItems,
-    material    : redirected to MaterialMaster
+    invoice  : redirected to Invoices,
+    poItem   : redirected to PurchaseOrderItems,
+    material : redirected to MaterialMaster
+    // receiptItem omitted — MaterialReceiptItems not exposed (ABAP GRN is flat)
   };
 
   @readonly
@@ -405,8 +411,8 @@ service ProjectService @(path: '/project') {
     *,
     invoice      : redirected to Invoices,
     purchaseOrder: redirected to PurchaseOrders,
-    receipt      : redirected to MaterialReceipts,
     material     : redirected to MaterialMaster
+    // receipt omitted — type is epc.MaterialReceipts, not GRNReceipts
   };
 }
 

@@ -7,10 +7,17 @@
       }
     },
     "RAP_SERVICE": {
-      "kind": "odata-v4",
+      "kind": "odata-v2",
       "credentials": {
-        "destination": "SOLAR_EPC_RAP",
-        "path": "/sap/opu/odata4/sap/zrap_material_receipt/srvd_a2x/sap/zrap_material_receipt/0001/"
+        "url": "https://mtsapserver6g.themdlabs.com:44300/sap/opu/odata/sap/ZUI_MAT_RECEIPT_BIND",
+        "username": "ALAPRUX04",
+        "password": "Alchemy@2026",
+        "rejectUnauthorized": false,
+        "csrf": true,
+        "csrfInSession": true,
+        "headers": {
+          "sap-client": "100"
+        }
       }
     },
     "SEGW_DELIVERY_SRV": {

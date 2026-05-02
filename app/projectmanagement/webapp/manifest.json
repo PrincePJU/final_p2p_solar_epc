@@ -55,14 +55,6 @@
           "odataVersion": "4.01"
         }
       },
-      "receiptService": {
-        "uri": "/receipt/",
-        "type": "OData",
-        "settings": {
-          "annotations": [],
-          "odataVersion": "4.01"
-        }
-      },
       "dashboardService": {
         "uri": "/dashboard/",
         "type": "OData",
@@ -144,15 +136,6 @@
       },
       "procurementService": {
         "dataSource": "procurementService",
-        "preload": true,
-        "settings": {
-          "operationMode": "Server",
-          "autoExpandSelect": true,
-          "earlyRequests": true
-        }
-      },
-      "receiptService": {
-        "dataSource": "receiptService",
         "preload": true,
         "settings": {
           "operationMode": "Server",
@@ -270,12 +253,12 @@
           "target": "ProcurementMRDetail"
         },
         {
-          "pattern": "GRN:?query:",
+          "pattern": "GRNReceipts:?query:",
           "name": "GRNList",
           "target": "GRNList"
         },
         {
-          "pattern": "GRN({key}):?query:",
+          "pattern": "GRNReceipts({key}):?query:",
           "name": "GRNObjectPage",
           "target": "GRNObjectPage"
         },
@@ -687,17 +670,17 @@
             }
           }
         },
-        "GRNList": {
+         "GRNList": {
           "type": "Component",
           "id": "GRNList",
           "name": "sap.fe.templates.ListReport",
           "options": {
             "settings": {
-              "contextPath": "/MaterialReceipts",
+              "contextPath": "/GRNReceipts",
               "variantManagement": "Page",
               "initialLoad": true,
               "navigation": {
-                "MaterialReceipts": {
+                "GRNReceipts": {
                   "detail": {
                     "route": "GRNObjectPage"
                   }
@@ -715,6 +698,9 @@
                       "sort": true,
                       "filter": true
                     }
+                  },
+                  "creationMode": {
+                    "name": "NewPage"
                   }
                 }
               }
@@ -727,9 +713,9 @@
           "name": "sap.fe.templates.ObjectPage",
           "options": {
             "settings": {
-              "contextPath": "/MaterialReceipts",
+              "contextPath": "/GRNReceipts",
               "editableHeaderContent": false,
-              "sectionLayout": "Tabs",
+              "sectionLayout": "Page",
               "controlConfiguration": {
                 "@com.sap.vocabularies.UI.v1.Identification": {
                   "actions": {
@@ -737,43 +723,6 @@
                       "visible": true
                     },
                     "DataFieldForAction::ProjectService.rejectReceipt": {
-                      "visible": true
-                    }
-                  }
-                },
-                "items/@com.sap.vocabularies.UI.v1.LineItem": {
-                  "tableSettings": {
-                    "type": "ResponsiveTable",
-                    "creationMode": {
-                      "name": "Inline"
-                    },
-                    "selectionMode": "Multi",
-                    "enableExport": true,
-                    "condensedTableLayout": false,
-                    "personalization": {
-                      "column": true,
-                      "sort": true,
-                      "filter": true
-                    }
-                  }
-                },
-                "damagedItems/@com.sap.vocabularies.UI.v1.LineItem": {
-                  "tableSettings": {
-                    "type": "ResponsiveTable",
-                    "creationMode": {
-                      "name": "Inline"
-                    },
-                    "selectionMode": "Single",
-                    "enableExport": true
-                  },
-                  "actions": {
-                    "DataFieldForAction::ProjectService.raiseClaim": {
-                      "visible": true
-                    },
-                    "DataFieldForAction::ProjectService.settleClaim": {
-                      "visible": true
-                    },
-                    "DataFieldForAction::ProjectService.rejectClaim": {
                       "visible": true
                     }
                   }
