@@ -127,12 +127,7 @@ module.exports = class ProjectService extends cds.ApplicationService {
     this.on('verifyReceipt', GRNReceipts, this._grnVerify.bind(this));
     this.on('rejectReceipt', GRNReceipts, this._grnReject.bind(this));
 
-    // ── GRN RECEIPT ANALYTICS — ALP chart handler ────────────────
-    // GRNReceiptAnalytics is a real DB entity (no @cds.persistence.skip) so
-    // it appears in $metadata. Data is served from the GRNReceipts SQLite table
-    // (or sample data as fallback). Without this handler CAP returns empty results
-    // and the ALP chart panel keeps loading indefinitely.
-    this.on('READ', GRNReceiptAnalytics, this._grnAnalyticsRead.bind(this));
+    // GRNReceiptAnalytics — CAP 9 handles $apply groupby/aggregate natively on SQLite.
 
     // ── INVOICE ACTIONS ───────────────────────────────────────────
     this.on('submitInvoice', Invoices, this._submitInvoice.bind(this));

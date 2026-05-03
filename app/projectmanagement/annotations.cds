@@ -1655,18 +1655,21 @@ annotate service.GRNReceiptAnalytics with @(
 
   // ── PresentationVariant (default) — Status tab ────────────────
   UI.PresentationVariant: {
+    SortOrder     : [{ $Type: 'Common.SortOrderType', Property: Quantity, Descending: true }],
     GroupBy       : [Status],
     Visualizations: ['@UI.Chart', '@UI.LineItem']
   },
 
   // ── PresentationVariant — Supplier tab ────────────────────────
   UI.PresentationVariant #BySupplier: {
+    SortOrder     : [{ $Type: 'Common.SortOrderType', Property: Quantity, Descending: true }],
     GroupBy       : [Supplier],
     Visualizations: ['@UI.Chart#BySupplier', '@UI.LineItem']
   },
 
   // ── PresentationVariant — Unit tab ────────────────────────────
   UI.PresentationVariant #ByUnit: {
+    SortOrder     : [{ $Type: 'Common.SortOrderType', Property: Quantity, Descending: true }],
     GroupBy       : [Unit],
     Visualizations: ['@UI.Chart#ByUnit', '@UI.LineItem']
   },
