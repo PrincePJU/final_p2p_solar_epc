@@ -308,13 +308,15 @@ service ProjectService @(path: '/project') {
     project         : redirected to Projects,
     vendor          : redirected to VendorMaster,
     materialRequest : redirected to MaterialRequests,
-    items           : redirected to PurchaseOrderItems,
-    deliveries      : redirected to Deliveries
-  } actions {
+    items           : redirected to PurchaseOrderItems
+    // deliveries excluded: epc.Deliveries cannot redirect to our flat SEGW proxy entity.
+    // Deliveries have their own dedicated list page (DeliveryList) — no sub-table needed.
+  } excluding { deliveries } actions {
     action confirmPO()                   returns PurchaseOrders;
     action cancelPO(reason: String(500)) returns PurchaseOrders;
     action closePO()                     returns PurchaseOrders;
   };
+
 
   entity PurchaseOrderItems as projection on epc.PurchaseOrderItems {
     *,
@@ -322,43 +324,45 @@ service ProjectService @(path: '/project') {
     material      : redirected to MaterialMaster
   };
 
-  // ── DELIVERIES ────────────────────────────────────────────────
-  @restrict: [
-    { grant: ['READ'],                    to: ['BDM','Engineer','ProjectManager','Management','ProcurementOfficer','FinanceOfficer'] },
-    { grant: ['CREATE','UPDATE'],         to: ['ProcurementOfficer','Management'] },
-    { grant: ['markInTransit','markDelivered','markDelayed'], to: ['ProcurementOfficer','Management'] }
-  ]
-  entity Deliveries as projection on epc.Deliveries {
-    *,
-    purchaseOrder : redirected to PurchaseOrders,
-    vendor        : redirected to VendorMaster,
-    items         : redirected to DeliveryItems
+  // ── DELIVERIES — ABAP SEGW proxy ──────────────────────────────
+  // Flat entity — NOT a projection. Handlers proxy to SEGW ZSolarDeliverySet.
+  // @odata.draft.enabled required for FE v4 Create button; draftActivate POSTs to SEGW.
+  // Field names are PascalCase to match SEGW OData V2 ZSolarDelivery property names.
+  // No @restrict here — service-level @requires handles auth; @restrict causes Insertable:false.
+  @odata.draft.enabled
+  entity Deliveries {
+    key DeliveryNumber : String(36) @mandatory;
+        PoNumber       : String(20);
+        VendorId       : String(36);
+        ProjectCode    : String(20);
+        Status         : String(20) default 'SCHEDULED';
+        ScheduledDate  : Date;
+        ActualDate     : Date;
+        DelayDays      : Integer;
+        DelayReason    : String(200);
+        VehicleNumber  : String(20);
+        DriverName     : String(100);
+        DriverPhone    : String(20);
+        EwayBill       : String(50);
+        CreatedAt      : Timestamp @readonly @cds.on.insert: $now;
+        virtual Criticality : Integer;
   } actions {
     action markInTransit()                                     returns Deliveries;
     action markDelivered(actualDate: Date)                     returns Deliveries;
-    action markDelayed(reason: String(500), newDate: Date)     returns Deliveries;
+    action markDelayed(reason: String(200), newDate: Date)     returns Deliveries;
   };
 
-  entity DeliveryItems as projection on epc.DeliveryItems {
-    *,
-    delivery : redirected to Deliveries,
-    poItem   : redirected to PurchaseOrderItems,
-    material : redirected to MaterialMaster
-  };
 
   // ── MATERIAL RECEIPTS (GRN) ───────────────────────────────────
   // Named GRNReceipts to avoid collision with CAP auto-exposed epc.MaterialReceipts.
   // Flat entity — NOT a projection. Handlers proxy to ABAP ZUI_MAT_RECEIPT_BIND.
   //
-  // NOTE: @restrict is intentionally NOT used here because CAP derives
-  //       Capabilities.InsertRestrictions.Insertable:false from role-based @restrict,
-  //       which hides the Create button in Fiori Elements regardless of explicit
-  //       @Capabilities overrides. @requires enforces auth without touching capabilities.
-  //       Handler-level role checks enforce CREATE/UPDATE vs READ granularity.
-  @requires: ['SiteEngineer','ProcurementOfficer','Management','ProjectManager']
-  @Capabilities.InsertRestrictions : { Insertable: true }
-  @Capabilities.DeleteRestrictions : { Deletable : true }
-  @Capabilities.UpdateRestrictions : { Updatable : true }
+  // NOTE: No @restrict or entity-level @requires here — both cause CAP to derive
+  //       Insertable:false in $metadata which hides the Create button in Fiori Elements.
+  //       The service-level @requires (line 9) handles authentication.
+  //       Capabilities are declared via full struct form in annotations.cds.
+  //       Handler-level checks in project-service.js enforce role granularity.
+  @odata.draft.enabled
   entity GRNReceipts {
     key ReceiptID : String(50)  @mandatory;
         Material  : String(40)  @mandatory;
@@ -369,6 +373,8 @@ service ProjectService @(path: '/project') {
         Status    : String(20)  default 'OPEN';
         Remarks   : String(500);
         CreatedAt : Timestamp   @readonly @cds.on.insert: $now;
+        virtual dummyInfo : String(500) default 'Ensure materials are physically verified against the PO before submitting. Once verified or rejected, this document becomes immutable. Upload all relevant quality inspection certificates if needed.';
+        virtual Criticality: Integer default 2;
   } actions {
     action verifyReceipt(remarks : String(500)) returns GRNReceipts;
     action rejectReceipt(reason  : String(500)) returns GRNReceipts;
@@ -384,13 +390,16 @@ service ProjectService @(path: '/project') {
     *,
     vendor         : redirected to VendorMaster,
     purchaseOrder  : redirected to PurchaseOrders,
-    // receipt not redirected — epc.Invoices.receipt → epc.MaterialReceipts (schema level, not our flat GRNReceipts)
+    // receipt excluded: epc.Invoices.receipt → epc.MaterialReceipts → epc.MaterialReceipts.delivery
+    // → epc.Deliveries (auto-exposed), which collides with our flat SEGW Deliveries proxy.
+    // GRN data is served separately through GRNReceipts (flat ABAP proxy entity).
     submittedBy    : redirected to Users,
     reviewedBy     : redirected to Users,
     approvedBy     : redirected to Users,
     items          : redirected to InvoiceItems,
     threeWayMatches: redirected to ThreeWayMatchResults
-  } actions {
+  } excluding { receipt } actions {
+
     action submitInvoice()                                              returns Invoices;
     action performThreeWayMatch()                                       returns Invoices;
     action approveInvoice()                                             returns Invoices;
@@ -403,8 +412,8 @@ service ProjectService @(path: '/project') {
     invoice  : redirected to Invoices,
     poItem   : redirected to PurchaseOrderItems,
     material : redirected to MaterialMaster
-    // receiptItem omitted — MaterialReceiptItems not exposed (ABAP GRN is flat)
-  };
+    // receiptItem excluded: → MaterialReceiptItems → DeliveryItems.delivery → epc.Deliveries (auto-expose collision)
+  } excluding { receiptItem };
 
   @readonly
   entity ThreeWayMatchResults as projection on epc.ThreeWayMatchResults {
@@ -412,8 +421,10 @@ service ProjectService @(path: '/project') {
     invoice      : redirected to Invoices,
     purchaseOrder: redirected to PurchaseOrders,
     material     : redirected to MaterialMaster
-    // receipt omitted — type is epc.MaterialReceipts, not GRNReceipts
-  };
+    // receipt, receiptItem, invoiceItem excluded:
+    // → MaterialReceipts.delivery → epc.Deliveries  (auto-expose collision)
+    // → MaterialReceiptItems.deliveryItem → DeliveryItems.delivery → epc.Deliveries
+  } excluding { receipt, receiptItem, invoiceItem, poItem };
 }
 
 // UI annotations are maintained in app/projectmanagement/annotations.cds

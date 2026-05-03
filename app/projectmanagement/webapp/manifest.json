@@ -697,10 +697,10 @@
                       "column": true,
                       "sort": true,
                       "filter": true
+                    },
+                    "creationMode": {
+                      "name": "NewPage"
                     }
-                  },
-                  "creationMode": {
-                    "name": "NewPage"
                   }
                 }
               }
@@ -758,6 +758,9 @@
                       "column": true,
                       "sort": true,
                       "filter": true
+                    },
+                    "creationMode": {
+                      "name": "NewPage"
                     }
                   }
                 }

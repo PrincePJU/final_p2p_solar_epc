@@ -23,8 +23,15 @@
     "SEGW_DELIVERY_SRV": {
       "kind": "odata-v2",
       "credentials": {
-        "destination": "SOLAR_EPC_SEGW",
-        "path": "/sap/opu/odata/sap/ZSOLAR_DELIVERY_SRV/"
+        "url": "http://mtsapserver6g.themdlabs.com:8000/sap/opu/odata/sap/ZSOLAR_DELIVERY_SRV_SRV",
+        "username": "ALAPRUX04",
+        "password": "Alchemy@2026",
+        "rejectUnauthorized": false,
+        "csrf": true,
+        "csrfInSession": true,
+        "headers": {
+          "sap-client": "100"
+        }
       }
     }
   },

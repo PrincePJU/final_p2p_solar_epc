@@ -1197,114 +1197,128 @@ annotate service.ThreeWayMatchResults with @(
 );
 
 // ═══════════════════════════════════════════════════════════════
-// DELIVERIES & GRN — Missing UI Annotations
+// DELIVERIES — ABAP SEGW Proxy (ZSolarDeliverySet)
+// Fields: DeliveryNumber(key), PoNumber, VendorId, ProjectCode,
+//         Status, ScheduledDate, ActualDate, DelayDays, DelayReason,
+//         VehicleNumber, DriverName, DriverPhone, EwayBill, CreatedAt
 // ═══════════════════════════════════════════════════════════════
 
-using ProcurementService from '../../srv/procurement-service';
+annotate service.Deliveries with @(
 
-annotate ProcurementService.Deliveries with @(
+  Capabilities: {
+    InsertRestrictions: { Insertable: true },
+    UpdateRestrictions: { Updatable: true },
+    DeleteRestrictions: { Deletable: true }
+  },
+
+  UI.SelectionFields: [ Status, PoNumber, VendorId ],
+
+  UI.LineItem: [
+    { $Type: 'UI.DataField', Value: DeliveryNumber, Label: 'Delivery No.',     ![@UI.Importance]: #High   },
+    { $Type: 'UI.DataField', Value: PoNumber,       Label: 'PO Number',        ![@UI.Importance]: #High   },
+    { $Type: 'UI.DataField', Value: VendorId,       Label: 'Vendor',           ![@UI.Importance]: #Medium },
+    { $Type: 'UI.DataField', Value: ProjectCode,    Label: 'Project',          ![@UI.Importance]: #Low    },
+    { $Type: 'UI.DataField', Value: ScheduledDate,  Label: 'Scheduled Date',   ![@UI.Importance]: #Medium },
+    { $Type: 'UI.DataField', Value: ActualDate,     Label: 'Actual Date',      ![@UI.Importance]: #Low    },
+    { $Type: 'UI.DataField', Value: Status,         Label: 'Status',           Criticality: Criticality, ![@UI.Importance]: #High },
+    { $Type: 'UI.DataField', Value: DelayDays,      Label: 'Delay (Days)',     ![@UI.Importance]: #Low    },
+    { $Type: 'UI.DataFieldForAction', Action: 'ProjectService.markInTransit', Label: 'Mark In Transit', Inline: false, ![@UI.Importance]: #High },
+    { $Type: 'UI.DataFieldForAction', Action: 'ProjectService.markDelivered', Label: 'Mark Delivered',  Inline: false, ![@UI.Importance]: #High },
+    { $Type: 'UI.DataFieldForAction', Action: 'ProjectService.markDelayed',   Label: 'Mark Delayed',   Inline: false, ![@UI.Importance]: #High }
+  ],
+
   UI.HeaderInfo: {
-    TypeName: 'Delivery',
+    TypeName      : 'Delivery',
     TypeNamePlural: 'Deliveries',
-    Title: { $Type: 'UI.DataField', Value: deliveryNumber },
-    Description: { $Type: 'UI.DataField', Value: status }
+    Title         : { $Type: 'UI.DataField', Value: DeliveryNumber },
+    Description   : { $Type: 'UI.DataField', Value: VendorId }
   },
-  UI.SelectionFields: [ status, purchaseOrder_ID ],
-  UI.LineItem: [
-    { $Type: 'UI.DataField', Value: deliveryNumber, Label: 'Delivery No.' },
-    { $Type: 'UI.DataField', Value: purchaseOrder_ID, Label: 'PO Number' },
-    { $Type: 'UI.DataField', Value: scheduledDate, Label: 'Scheduled Date' },
-    { $Type: 'UI.DataField', Value: actualDate, Label: 'Actual Date' },
-    { $Type: 'UI.DataField', Value: status, Label: 'Status' }
+
+  UI.HeaderFacets: [
+    { $Type: 'UI.ReferenceFacet', Target: '@UI.DataPoint#Status',   ID: 'HdrStatus'   },
+    { $Type: 'UI.ReferenceFacet', Target: '@UI.DataPoint#DelayDays', ID: 'HdrDelay'  }
   ],
-  UI.Facets: [
-    {
-      $Type: 'UI.ReferenceFacet',
-      Target: '@UI.FieldGroup#DeliveryDetails',
-      Label: 'Delivery Details'
-    }
-  ],
-  UI.FieldGroup#DeliveryDetails: {
-    Data: [
-      { $Type: 'UI.DataField', Value: deliveryNumber },
-      { $Type: 'UI.DataField', Value: purchaseOrder_ID },
-      { $Type: 'UI.DataField', Value: scheduledDate },
-      { $Type: 'UI.DataField', Value: actualDate },
-      { $Type: 'UI.DataField', Value: delayDays },
-      { $Type: 'UI.DataField', Value: status }
-    ]
-  }
-);
 
+  UI.DataPoint#Status: {
+    Title      : 'Status',
+    Value      : Status,
+    Criticality: Criticality
+  },
 
-// ═══════════════════════════════════════════════════════════════
-// PURCHASE ORDERS — UI Annotations
-// ═══════════════════════════════════════════════════════════════
+  UI.DataPoint#DelayDays: {
+    Title: 'Delay (Days)',
+    Value: DelayDays
+  },
 
-annotate ProcurementService.PurchaseOrders with @(
   UI.Identification: [
-    { $Type: 'UI.DataFieldForAction', Action: 'ProcurementService.confirmPO', Label: 'Confirm PO'  },
-    { $Type: 'UI.DataFieldForAction', Action: 'ProcurementService.cancelPO',  Label: 'Cancel PO'  },
-    { $Type: 'UI.DataFieldForAction', Action: 'ProcurementService.closePO',   Label: 'Close PO'   }
-  ]
-);
-
-annotate ProcurementService.PurchaseOrders with @(
-  UI.HeaderInfo: {
-    TypeName: 'Purchase Order',
-    TypeNamePlural: 'Purchase Orders',
-    Title: { $Type: 'UI.DataField', Value: poNumber },
-    Description: { $Type: 'UI.DataField', Value: status }
-  },
-  UI.SelectionFields: [ status, vendor_ID, poDate ],
-  UI.LineItem: [
-    { $Type: 'UI.DataField', Value: poNumber, Label: 'PO Number' },
-    { $Type: 'UI.DataField', Value: vendor_ID, Label: 'Vendor' },
-    { $Type: 'UI.DataField', Value: poDate, Label: 'PO Date' },
-    { $Type: 'UI.DataField', Value: deliveryDate, Label: 'Delivery Date' },
-    { $Type: 'UI.DataField', Value: grandTotal, Label: 'Total Amount' },
-    { $Type: 'UI.DataField', Value: status, Label: 'Status' }
+    { $Type: 'UI.DataFieldForAction', Action: 'ProjectService.markInTransit', Label: 'Mark In Transit' },
+    { $Type: 'UI.DataFieldForAction', Action: 'ProjectService.markDelivered', Label: 'Mark Delivered'  },
+    { $Type: 'UI.DataFieldForAction', Action: 'ProjectService.markDelayed',   Label: 'Mark Delayed'    }
   ],
+
   UI.Facets: [
     {
-      $Type: 'UI.ReferenceFacet',
-      Label: 'PO Details',
-      Target: '@UI.FieldGroup#PODetails'
-    },
-    {
-      $Type: 'UI.ReferenceFacet',
-      Label: 'Line Items',
-      Target: 'items/@UI.LineItem'
-    },
-    {
-      $Type: 'UI.ReferenceFacet',
-      Label: 'Delivery Schedule',
-      Target: 'deliveries/@UI.LineItem'
+      $Type : 'UI.CollectionFacet',
+      ID    : 'DeliveryMain',
+      Label : 'Delivery Details',
+      Facets: [
+        { $Type: 'UI.ReferenceFacet', ID: 'DeliveryInfo', Label: 'Shipment Info',  Target: '@UI.FieldGroup#DeliveryInfo' },
+        { $Type: 'UI.ReferenceFacet', ID: 'LogisticsInfo',Label: 'Logistics',      Target: '@UI.FieldGroup#LogisticsInfo' }
+      ]
     }
   ],
-  UI.FieldGroup#PODetails: {
-    Data: [
-      { $Type: 'UI.DataField', Value: poNumber },
-      { $Type: 'UI.DataField', Value: vendor_ID },
-      { $Type: 'UI.DataField', Value: project_ID },
-      { $Type: 'UI.DataField', Value: poDate },
-      { $Type: 'UI.DataField', Value: deliveryDate },
-      { $Type: 'UI.DataField', Value: grandTotal },
-      { $Type: 'UI.DataField', Value: status }
+
+  UI.FieldGroup#DeliveryInfo: {
+    Label: 'Shipment Information',
+    Data : [
+      { $Type: 'UI.DataField', Value: DeliveryNumber },
+      { $Type: 'UI.DataField', Value: PoNumber       },
+      { $Type: 'UI.DataField', Value: VendorId       },
+      { $Type: 'UI.DataField', Value: ProjectCode    },
+      { $Type: 'UI.DataField', Value: Status         },
+      { $Type: 'UI.DataField', Value: ScheduledDate  },
+      { $Type: 'UI.DataField', Value: ActualDate     },
+      { $Type: 'UI.DataField', Value: DelayDays      },
+      { $Type: 'UI.DataField', Value: DelayReason    }
+    ]
+  },
+
+  UI.FieldGroup#LogisticsInfo: {
+    Label: 'Logistics & Tracking',
+    Data : [
+      { $Type: 'UI.DataField', Value: VehicleNumber },
+      { $Type: 'UI.DataField', Value: DriverName    },
+      { $Type: 'UI.DataField', Value: DriverPhone   },
+      { $Type: 'UI.DataField', Value: EwayBill      },
+      { $Type: 'UI.DataField', Value: CreatedAt     }
     ]
   }
+
 );
 
-annotate ProcurementService.PurchaseOrderItems with @(
-  UI.LineItem: [
-    { $Type: 'UI.DataField', Value: material_ID, Label: 'Material' },
-    { $Type: 'UI.DataField', Value: orderedQty, Label: 'Ordered Qty' },
-    { $Type: 'UI.DataField', Value: unitPrice, Label: 'Unit Price' },
-    { $Type: 'UI.DataField', Value: taxPercent, Label: 'Tax %' },
-    { $Type: 'UI.DataField', Value: totalAmount, Label: 'Line Total' },
-    { $Type: 'UI.DataField', Value: deliveredQty, Label: 'Delivered Qty' }
-  ]
-);
+annotate service.Deliveries with {
+  DeliveryNumber @title: 'Delivery Number'  @Core.Immutable: true;
+  PoNumber       @title: 'PO Number';
+  VendorId       @title: 'Vendor ID';
+  ProjectCode    @title: 'Project Code';
+  Status         @title: 'Status';
+  ScheduledDate  @title: 'Scheduled Date';
+  ActualDate     @title: 'Actual Date';
+  DelayDays      @title: 'Delay (Days)';
+  DelayReason    @title: 'Delay Reason';
+  VehicleNumber  @title: 'Vehicle Number';
+  DriverName     @title: 'Driver Name';
+  DriverPhone    @title: 'Driver Phone';
+  EwayBill       @title: 'E-Way Bill';
+  CreatedAt      @title: 'Created On'     @Core.Computed: true;
+};
+
+
+// NOTE: ProcurementService.PurchaseOrders and PurchaseOrderItems annotations
+// are maintained in srv/procurement-service.cds — do NOT duplicate here.
+// The 'Delivery Schedule' facet on PO Object Page was removed because
+// PurchaseOrders.deliveries navigation is excluded (Deliveries is now a flat SEGW proxy).
+
 
 // ═══════════════════════════════════════════════════════════════
 // ProjectService — VendorMaster & PurchaseOrders annotations
@@ -1445,9 +1459,11 @@ annotate service.PurchaseOrderItems with @(
 
 annotate service.GRNReceipts with @(
 
-  Capabilities.InsertRestrictions : { Insertable: true },
-  Capabilities.DeleteRestrictions : { Deletable: true },
-  Capabilities.UpdateRestrictions : { Updatable: true },
+  Capabilities: {
+    InsertRestrictions: { Insertable: true },
+    DeleteRestrictions: { Deletable: true },
+    UpdateRestrictions: { Updatable: true }
+  },
 
   UI.SelectionFields: [ Status, PONumber, Supplier ],
 
@@ -1458,7 +1474,7 @@ annotate service.GRNReceipts with @(
     { $Type: 'UI.DataField', Value: Unit,       Label: 'Unit',        ![@UI.Importance]: #Low    },
     { $Type: 'UI.DataField', Value: PONumber,   Label: 'PO Number',   ![@UI.Importance]: #Medium },
     { $Type: 'UI.DataField', Value: Supplier,   Label: 'Supplier',    ![@UI.Importance]: #Medium },
-    { $Type: 'UI.DataField', Value: Status,     Label: 'Status',      ![@UI.Importance]: #High   },
+    { $Type: 'UI.DataField', Value: Status,     Label: 'Status',      Criticality: Criticality, ![@UI.Importance]: #High   },
     { $Type: 'UI.DataField', Value: CreatedAt,  Label: 'Created On',  ![@UI.Importance]: #Low    },
     // Actions appear in table toolbar when a row is selected
     { $Type: 'UI.DataFieldForAction', Action: 'ProjectService.verifyReceipt', Label: 'Verify', Inline: false, ![@UI.Importance]: #High },
@@ -1469,7 +1485,32 @@ annotate service.GRNReceipts with @(
     TypeName      : 'Material Receipt (GRN)',
     TypeNamePlural: 'Material Receipts',
     Title         : { $Type: 'UI.DataField', Value: ReceiptID },
-    Description   : { $Type: 'UI.DataField', Value: Status }
+    Description   : { $Type: 'UI.DataField', Value: Supplier }
+  },
+
+  UI.HeaderFacets: [
+    {
+      $Type : 'UI.ReferenceFacet',
+      Target: '@UI.DataPoint#Status',
+      ID    : 'HeaderStatus'
+    },
+    {
+      $Type : 'UI.ReferenceFacet',
+      Target: '@UI.DataPoint#Quantity',
+      ID    : 'HeaderQuantity'
+    }
+  ],
+
+  UI.DataPoint#Status: {
+    Title: 'Document Status',
+    Value: Status,
+    Criticality: Criticality
+  },
+
+  UI.DataPoint#Quantity: {
+    Title: 'Received Quantity',
+    Value: Quantity,
+    TargetValue: 0
   },
 
   UI.Identification: [
@@ -1478,23 +1519,53 @@ annotate service.GRNReceipts with @(
   ],
 
   UI.Facets: [
-    { $Type: 'UI.ReferenceFacet', ID: 'GRNDetails', Label: 'Receipt Details', Target: '@UI.FieldGroup#GRNDetails' }
+    {
+      $Type : 'UI.CollectionFacet',
+      ID    : 'GeneralInfo',
+      Label : 'General Information',
+      Facets: [
+        { $Type: 'UI.ReferenceFacet', ID: 'GRNDetails', Label: 'Receipt Details', Target: '@UI.FieldGroup#GRNDetails' },
+        { $Type: 'UI.ReferenceFacet', ID: 'GRNAdmin', Label: 'Supplier & PO', Target: '@UI.FieldGroup#GRNAdmin' }
+      ]
+    },
+    {
+      $Type : 'UI.CollectionFacet',
+      ID    : 'Instructions',
+      Label : 'Guidelines',
+      Facets: [
+        { $Type: 'UI.ReferenceFacet', ID: 'HelpText', Label: 'Important Notes', Target: '@UI.FieldGroup#HelpText' }
+      ]
+    }
   ],
 
   UI.FieldGroup#GRNDetails: {
-    Label: 'Receipt Details',
+    Label: 'Material Details',
     Data : [
       { $Type: 'UI.DataField', Value: ReceiptID  },
       { $Type: 'UI.DataField', Value: Material   },
       { $Type: 'UI.DataField', Value: Quantity   },
       { $Type: 'UI.DataField', Value: Unit       },
+      { $Type: 'UI.DataField', Value: Status     },
+      { $Type: 'UI.DataField', Value: Remarks    }
+    ]
+  },
+
+  UI.FieldGroup#GRNAdmin: {
+    Label: 'Supplier Details',
+    Data : [
       { $Type: 'UI.DataField', Value: PONumber   },
       { $Type: 'UI.DataField', Value: Supplier   },
-      { $Type: 'UI.DataField', Value: Status     },
-      { $Type: 'UI.DataField', Value: Remarks    },
       { $Type: 'UI.DataField', Value: CreatedAt  }
     ]
-  }
+  },
+
+  UI.FieldGroup#HelpText: {
+    Label: 'Instructions for Site Engineer',
+    Data : [
+      { $Type: 'UI.DataField', Value: dummyInfo, Label: 'Process Guideline' }
+    ]
+  },
+
 );
 
 annotate service.GRNReceipts with {

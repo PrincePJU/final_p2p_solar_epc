@@ -90,17 +90,40 @@ module.exports = class ProjectService extends cds.ApplicationService {
     this.on('cancelPO', PurchaseOrders, this._cancelPO.bind(this));
     this.on('closePO', PurchaseOrders, this._closePO.bind(this));
 
-    // ── DELIVERY ACTIONS ────────────────────────────────────────
-    this.before('CREATE', Deliveries, this._generateDeliveryNumber.bind(this));
+    // ── DELIVERIES (ABAP SEGW proxy) ────────────────────────────
+    // Same pattern as GRN: READ proxies to SEGW, draft reads fall through to SQLite.
+    // draftActivate POSTs to SEGW; update/delete PATCH/DELETE SEGW then local SQLite.
+    const segwSvc = await cds.connect.to('SEGW_DELIVERY_SRV');
+    segwSvc.before('READ', (req) => {
+      const cols = req.query?.SELECT?.columns;
+      if (cols && cols.some(c => c?.ref?.[0] === 'DraftMessages')) {
+        req.reply([]); // lean-draft DraftMessages query — SEGW doesn’t have it
+      }
+    });
+    this.on('READ',          Deliveries, this._deliveryRead.bind(this));
+    this.on('CREATE',        Deliveries, this._deliveryCreate.bind(this));
+    this.on('UPDATE',        Deliveries, this._deliveryUpdate.bind(this));
+    this.on('DELETE',        Deliveries, this._deliveryDelete.bind(this));
+    this.on('draftActivate', Deliveries, this._deliveryDraftActivate.bind(this));
     this.on('markInTransit', Deliveries, this._markInTransit.bind(this));
     this.on('markDelivered', Deliveries, this._markDelivered.bind(this));
     this.on('markDelayed', Deliveries, this._markDelayed.bind(this));
 
     // ── GRN RECEIPTS (ABAP proxy) ────────────────────────────────
-    this.on('READ', GRNReceipts, this._grnRead.bind(this));
-    this.on('CREATE', GRNReceipts, this._grnCreate.bind(this));
-    this.on('UPDATE', GRNReceipts, this._grnUpdate.bind(this));
-    this.on('DELETE', GRNReceipts, this._grnDelete.bind(this));
+    // READ proxies to ABAP for active entities; draft reads fall through to SQLite.
+    // DraftMessages sub-queries from lean-draft are silently intercepted on RAP_SERVICE.
+    const rapSvc = await cds.connect.to('RAP_SERVICE');
+    rapSvc.before('READ', (req) => {
+      const cols = req.query?.SELECT?.columns;
+      if (cols && cols.some(c => c?.ref?.[0] === 'DraftMessages')) {
+        req.reply([]); // lean-draft DraftMessages query — ABAP doesn’t have it, return empty
+      }
+    });
+    this.on('READ',          GRNReceipts, this._grnRead.bind(this));
+    this.on('CREATE',        GRNReceipts, this._grnCreate.bind(this));
+    this.on('UPDATE',        GRNReceipts, this._grnUpdate.bind(this));
+    this.on('DELETE',        GRNReceipts, this._grnDelete.bind(this));
+    this.on('draftActivate', GRNReceipts, this._grnDraftActivate.bind(this));
     this.on('verifyReceipt', GRNReceipts, this._grnVerify.bind(this));
     this.on('rejectReceipt', GRNReceipts, this._grnReject.bind(this));
 
@@ -717,47 +740,230 @@ module.exports = class ProjectService extends cds.ApplicationService {
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // DELIVERIES
+  // DELIVERIES — ABAP SEGW Proxy (ZSolarDeliverySet)
   // ═══════════════════════════════════════════════════════════════
 
-  async _generateDeliveryNumber(req) {
-    if (req.data.deliveryNumber) return;
-    const year = new Date().getFullYear();
-    const last = await SELECT.one.from(this.entities.Deliveries).columns('deliveryNumber').orderBy('createdAt desc');
-    let seq = 1;
-    if (last?.deliveryNumber) { const m = last.deliveryNumber.match(/DEL-\d{4}-(\d{4})$/); if (m) seq = parseInt(m[1]) + 1; }
-    req.data.deliveryNumber = `DEL-${year}-${String(seq).padStart(4, '0')}`;
-    req.data.status = req.data.status || 'SCHEDULED';
-    req.data.delayDays = req.data.delayDays ?? 0;
+  static SEGW_DELIVERY_SET = 'ZSolarDeliverySet';
+
+  // Fields that are OData V4 / draft system only — stripped before querying SEGW OData V2
+  static DELIVERY_VIRTUAL_FIELDS = new Set([
+    'IsActiveEntity','HasDraftEntity','HasActiveEntity',
+    'DraftAdministrativeData','SiblingEntity','DraftMessages',
+    'Criticality'
+  ]);
+
+  async _getSegwService() {
+    if (!this._segwSvc) this._segwSvc = await cds.connect.to('SEGW_DELIVERY_SRV');
+    return this._segwSvc;
+  }
+
+  // ── CSRF-aware SEGW HTTP helper ──────────────────────────────────────────
+  // SEGW OData V2 rejects PATCH/DELETE/POST without a valid X-CSRF-Token.
+  // CAP's svc.send() doesn't handle the token refresh cycle per-call,
+  // so we manage it ourselves: GET token → reuse session cookie → mutate.
+  async _segwRequest({ method, key, payload }) {
+    const http  = require('http');  // port 8000 is plain HTTP
+    const creds = cds.env.requires.SEGW_DELIVERY_SRV.credentials;
+    const base  = new URL(creds.url);
+    const auth  = Buffer.from(`${creds.username}:${creds.password}`).toString('base64');
+    const eset  = ProjectService.SEGW_DELIVERY_SET;
+    const client = base.protocol === 'https:' ? require('https') : require('http');
+
+    const commonHeaders = {
+      'Authorization' : `Basic ${auth}`,
+      'sap-client'    : '100',
+      'Accept'        : 'application/json',
+      'Content-Type'  : 'application/json'
+    };
+
+    // Step 1: fetch CSRF token
+    const token = await new Promise((resolve, reject) => {
+      const opts = {
+        hostname: base.hostname,
+        port    : parseInt(base.port) || (base.protocol === 'https:' ? 443 : 80),
+        path    : `${base.pathname}/${eset}?$top=1`,
+        method  : 'GET',
+        headers : { ...commonHeaders, 'x-csrf-token': 'Fetch' },
+        rejectUnauthorized: false
+      };
+      const req = client.request(opts, res => {
+        res.resume();
+        const t = res.headers['x-csrf-token'];
+        if (!t || t === 'Required') return reject(new Error('CSRF fetch returned no token'));
+        resolve({ token: t, cookie: res.headers['set-cookie']?.join('; ') || '' });
+      });
+      req.on('error', reject);
+      req.end();
+    });
+
+    // Step 2: send mutating request with token + session cookie
+    const resourcePath = key
+      ? `${base.pathname}/${eset}('${encodeURIComponent(key)}')`
+      : `${base.pathname}/${eset}`;
+    const body = payload ? JSON.stringify(payload) : '';
+
+    return new Promise((resolve, reject) => {
+      const opts = {
+        hostname: base.hostname,
+        port    : parseInt(base.port) || (base.protocol === 'https:' ? 443 : 80),
+        path    : resourcePath,
+        method,
+        headers : {
+          ...commonHeaders,
+          'x-csrf-token'  : token.token,
+          'Cookie'        : token.cookie,
+          'Content-Length': Buffer.byteLength(body)
+        },
+        rejectUnauthorized: false
+      };
+      const req = client.request(opts, res => {
+        let data = '';
+        res.on('data', d => data += d);
+        res.on('end', () => {
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            try { resolve(data ? JSON.parse(data) : {}); } catch { resolve({}); }
+          } else {
+            reject(new Error(`SEGW ${method} failed ${res.statusCode}: ${data.slice(0, 200)}`));
+          }
+        });
+      });
+      req.on('error', reject);
+      if (body) req.write(body);
+      req.end();
+    });
+  }
+
+  async _deliveryRead(req, next) {
+    const s = req.query?.SELECT;
+    const whereStr = JSON.stringify(s?.where ?? '');
+    // Draft reads → serve from local SQLite (draft staging)
+    if (whereStr.includes('IsActiveEntity')) return next();
+
+    const svc = await this._getSegwService();
+    const q = SELECT.from(ProjectService.SEGW_DELIVERY_SET);
+
+    // Strip draft/virtual fields from $select before hitting SEGW
+    if (s?.columns?.length) {
+      const safe = s.columns.filter(c => !c?.ref || !ProjectService.DELIVERY_VIRTUAL_FIELDS.has(c.ref[0]));
+      if (safe.length) q.columns(safe);
+    }
+    if (s?.where?.length)   q.where(s.where);
+    if (s?.orderBy?.length) q.orderBy(s.orderBy);
+    if (s?.limit?.rows)     q.limit(s.limit.rows.val, s.limit.offset?.val ?? 0);
+
+    const results = await svc.run(q);
+    if (Array.isArray(results)) results.forEach(r => this._deliveryNormalize(r));
+    else if (results) this._deliveryNormalize(results);
+    return results;
+  }
+
+  _parseV2DateToISO(val) {
+    if (!val || typeof val !== 'string') return val;
+    // OData V2: /Date(1777593600000)/ or /Date(1777593600000+0000)/
+    const m = val.match(/\/Date\((-?\d+)([+-]\d{4})?\)\//);
+    if (m) return new Date(parseInt(m[1])).toISOString().slice(0, 10); // return YYYY-MM-DD
+    return val; // already ISO or null
+  }
+
+  _deliveryNormalize(r) {
+    if (!r) return;
+    // Parse OData V2 /Date(ms)/ format for all date fields
+    if (r.ScheduledDate) r.ScheduledDate = this._parseV2DateToISO(r.ScheduledDate);
+    if (r.ActualDate)    r.ActualDate    = this._parseV2DateToISO(r.ActualDate);
+    if (r.CreatedAt)     r.CreatedAt     = this._parseV2DateToISO(r.CreatedAt);
+    // Compute Criticality for UI color coding
+    const statusCrit = { DELIVERED: 3, IN_TRANSIT: 2, SCHEDULED: 2, DELAYED: 1, INVOICED: 3 };
+    r.Criticality = statusCrit[r.Status] ?? 0;
+  }
+
+  async _deliveryCreate(req) {
+    // With @odata.draft.enabled, CREATE stages in local SQLite draft table.
+    // _deliveryDraftActivate will POST to SEGW on Save.
+    console.log('[DEL] 🔵 Draft staged in SQLite:', req.data?.DeliveryNumber);
+  }
+
+  async _deliveryDraftActivate(req, next) {
+    try {
+      const data = req.data ?? {};
+      const fields = ['DeliveryNumber','PoNumber','VendorId','ProjectCode','Status',
+                      'ScheduledDate','ActualDate','DelayDays','DelayReason',
+                      'VehicleNumber','DriverName','DriverPhone','EwayBill'];
+      const payload = {};
+      for (const f of fields) { if (data[f] !== undefined && data[f] !== null) payload[f] = data[f]; }
+      if (!payload.DeliveryNumber) return req.error(400, 'Delivery Number is mandatory');
+      payload.Status = payload.Status || 'SCHEDULED';
+
+      console.log('[DEL draftActivate] Sending to SEGW:', JSON.stringify(payload));
+      await this._segwRequest({ method: 'POST', payload });
+      console.log('[DEL draftActivate] SEGW POST succeeded');
+    } catch (err) {
+      console.error('[DEL draftActivate] SEGW error:', err.message);
+      return req.error(500, `SEGW create failed: ${err.message}`);
+    }
+    return next();
+  }
+
+  async _deliveryUpdate(req, next) {
+    const { DeliveryNumber } = req.params?.[0] ?? {};
+    if (!DeliveryNumber) return next();
+    const payload = { ...req.data };
+    delete payload.DeliveryNumber; delete payload.CreatedAt; delete payload.Criticality;
+    try {
+      await this._segwRequest({ method: 'PATCH', key: DeliveryNumber, payload });
+      console.log(`[DEL] PATCH ${DeliveryNumber} → SEGW OK`);
+    } catch (err) {
+      return req.error(500, `SEGW update failed: ${err.message}`);
+    }
+    return next();
+  }
+
+  async _deliveryDelete(req, next) {
+    const { DeliveryNumber } = req.params?.[0] ?? {};
+    if (!DeliveryNumber) return next();
+    try {
+      await this._segwRequest({ method: 'DELETE', key: DeliveryNumber, payload: null });
+      console.log(`[DEL] DELETE ${DeliveryNumber} → SEGW OK`);
+    } catch (err) {
+      return req.error(500, `SEGW delete failed: ${err.message}`);
+    }
+    return next();
   }
 
   async _markInTransit(req) {
-    const { ID } = req.params[0];
-    await UPDATE(this.entities.Deliveries).set({ status: 'IN_TRANSIT' }).where({ ID });
-    return SELECT.one.from(this.entities.Deliveries).where({ ID });
+    const { DeliveryNumber } = req.params?.[0] ?? {};
+    if (!DeliveryNumber) return req.error(400, 'Delivery Number required');
+    await this._segwRequest({ method: 'PATCH', key: DeliveryNumber, payload: { Status: 'IN_TRANSIT' } });
+    await UPDATE(this.entities.Deliveries).set({ Status: 'IN_TRANSIT', Criticality: 2 }).where({ DeliveryNumber });
+    return SELECT.one.from(this.entities.Deliveries).where({ DeliveryNumber });
   }
 
   async _markDelivered(req) {
-    const { ID } = req.params[0];
+    const { DeliveryNumber } = req.params?.[0] ?? {};
     const { actualDate } = req.data;
-    const del = await SELECT.one.from(this.entities.Deliveries).where({ ID });
-    if (!del) return req.error(404, `Delivery not found`);
-    const actualD = new Date(actualDate || new Date());
-    const delayDays = Math.max(0, Math.round((actualD - new Date(del.scheduledDate)) / 86400000));
-    await UPDATE(this.entities.Deliveries)
-      .set({ status: 'DELIVERED', actualDate: actualDate || new Date().toISOString().slice(0, 10), delayDays })
-      .where({ ID });
-    return SELECT.one.from(this.entities.Deliveries).where({ ID });
+    if (!DeliveryNumber) return req.error(400, 'Delivery Number required');
+    const del = await SELECT.one.from(this.entities.Deliveries).where({ DeliveryNumber });
+    const delayDays = del?.ScheduledDate
+      ? Math.max(0, Math.round((new Date(actualDate || Date.now()) - new Date(del.ScheduledDate)) / 86400000))
+      : 0;
+    const patch = { Status: 'DELIVERED', ActualDate: actualDate || new Date().toISOString().slice(0, 10), DelayDays: delayDays };
+    await this._segwRequest({ method: 'PATCH', key: DeliveryNumber, payload: patch });
+    await UPDATE(this.entities.Deliveries).set({ ...patch, Criticality: 3 }).where({ DeliveryNumber });
+    return SELECT.one.from(this.entities.Deliveries).where({ DeliveryNumber });
   }
 
   async _markDelayed(req) {
-    const { ID } = req.params[0];
+    const { DeliveryNumber } = req.params?.[0] ?? {};
     const { reason, newDate } = req.data;
-    await UPDATE(this.entities.Deliveries)
-      .set({ status: 'DELAYED', delayReason: reason || '', scheduledDate: newDate })
-      .where({ ID });
-    return SELECT.one.from(this.entities.Deliveries).where({ ID });
+    if (!DeliveryNumber) return req.error(400, 'Delivery Number required');
+    const patch = { Status: 'DELAYED', DelayReason: reason || '', ScheduledDate: newDate };
+    await this._segwRequest({ method: 'PATCH', key: DeliveryNumber, payload: patch });
+    await UPDATE(this.entities.Deliveries).set({ ...patch, Criticality: 1 }).where({ DeliveryNumber });
+    return SELECT.one.from(this.entities.Deliveries).where({ DeliveryNumber });
   }
+
+
+
+
 
   // ═══════════════════════════════════════════════════════════════
   // GRN RECEIPTS — ABAP Proxy (ZUI_MAT_RECEIPT_BIND / Z_C_MAT_RECEIPT)
@@ -859,17 +1065,33 @@ module.exports = class ProjectService extends cds.ApplicationService {
   }
 
 
-  async _grnRead(req) {
+  // Draft-system and virtual fields that exist in CAP/UI but NOT in ABAP OData V2
+  static DRAFT_FIELDS = new Set([
+    'IsActiveEntity','HasDraftEntity','HasActiveEntity',
+    'DraftAdministrativeData','SiblingEntity','DraftMessages',
+    'Criticality', 'dummyInfo'
+  ]);
+
+  async _grnRead(req, next) {
+    const s = req.query?.SELECT;
+    const whereStr = JSON.stringify(s?.where ?? '');
+
+    // Any draft-context query → serve from local SQLite, not ABAP
+    if (whereStr.includes('IsActiveEntity')) return next();
+
     const svc = await this._getRapService();
-    // Build CQN targeting the ABAP entity, propagating filter/select/paging
     const q = SELECT.from(ProjectService.ABAP_GRN);
-    const s = req.query.SELECT;
-    if (s?.columns?.length) q.columns(s.columns);
-    if (s?.where?.length) q.where(s.where);
+
+    // Strip draft-system columns before hitting ABAP OData V2
+    if (s?.columns?.length) {
+      const safe = s.columns.filter(c => !c?.ref || !ProjectService.DRAFT_FIELDS.has(c.ref[0]));
+      if (safe.length) q.columns(safe);
+    }
+    if (s?.where?.length)   q.where(s.where);
     if (s?.orderBy?.length) q.orderBy(s.orderBy);
-    if (s?.limit?.rows) q.limit(s.limit.rows.val, s.limit.offset?.val ?? 0);
+    if (s?.limit?.rows)     q.limit(s.limit.rows.val, s.limit.offset?.val ?? 0);
+
     const results = await svc.run(q);
-    // OData V2 returns dates as /Date(ms+offset)/ — convert to ISO for OData V4 client
     if (Array.isArray(results)) results.forEach(r => this._normalizeGRNDates(r));
     else if (results) this._normalizeGRNDates(results);
     return results;
@@ -878,7 +1100,13 @@ module.exports = class ProjectService extends cds.ApplicationService {
   _normalizeGRNDates(record) {
     if (!record) return;
     if (record.CreatedAt) record.CreatedAt = this._parseV2Date(record.CreatedAt);
-    // Strip ABAP RAP metadata control fields — not in GRNReceipts entity
+    
+    // Set Criticality for UI color coding
+    if (record.Status === 'VERIFIED') record.Criticality = 3;      // Green
+    else if (record.Status === 'REJECTED') record.Criticality = 1; // Red
+    else record.Criticality = 2;                                   // Yellow (OPEN/PENDING)
+
+    // Strip ABAP RAP metadata control fields
     delete record.Delete_mc;
     delete record.Update_mc;
   }
@@ -891,34 +1119,55 @@ module.exports = class ProjectService extends cds.ApplicationService {
   }
 
 
+  // ── draftActivate — final Save sends staged draft data to ABAP ──
+  async _grnDraftActivate(req, next) {
+    try {
+      const data = req.data ?? {};
+      const payload = {};
+      const fields = ['ReceiptID', 'Material', 'Quantity', 'PONumber', 'Supplier', 'Unit', 'Remarks'];
+      for (const f of fields) { if (data[f] !== undefined && data[f] !== null) payload[f] = data[f]; }
+      if (!payload.ReceiptID) return req.error(400, 'Receipt ID is mandatory');
+      console.log('[GRN draftActivate] Sending to ABAP:', JSON.stringify(payload));
+      const result = await this._abapRequest({ method: 'POST', payload });
+      console.log('[GRN draftActivate] ABAP response:', JSON.stringify(result));
+    } catch (err) {
+      console.error('[GRN draftActivate] ABAP error:', err.message);
+      return req.error(500, `ABAP create failed: ${err.message}`);
+    }
+    return next();
+  }
+
   async _grnCreate(req) {
-    console.log('[GRN Logger] 🔵 Fired: CREATE Receipt');
-    console.log('[GRN Logger] 🔵 Payload:', JSON.stringify(req.data, null, 2));
-    const payload = { ...req.data };
-    delete payload.CreatedAt;
-    const result = await this._abapRequest({ method: 'POST', payload });
-    return result?.d ?? payload;
+    console.log('[GRN Logger] 🔵 Fired: CREATE Receipt (draft staging in SQLite)');
+    // With draft enabled, CREATE stages the record in local SQLite.
+    // draftActivate will forward to ABAP on Save. Let CAP handle this.
+    return;
   }
 
-  async _grnUpdate(req) {
-    const { ReceiptID } = req.params[0];
+  async _grnUpdate(req, next) {
+    const { ReceiptID } = req.params?.[0] ?? {};
+    if (!ReceiptID) return next();
     console.log(`[GRN Logger] 🟡 Fired: UPDATE Receipt (${ReceiptID})`);
-    console.log(`[GRN Logger] 🟡 Payload:`, JSON.stringify(req.data, null, 2));
-    if (!ReceiptID) return req.error(400, 'Cannot update a receipt with no Receipt ID');
     const payload = { ...req.data };
-    delete payload.ReceiptID;
-    delete payload.CreatedAt;
-    await this._abapRequest({ method: 'PATCH', key: ReceiptID, payload });
-    const svc = await this._getRapService();
-    return svc.run(SELECT.one.from(ProjectService.ABAP_GRN).where({ ReceiptID }));
+    delete payload.ReceiptID; delete payload.CreatedAt;
+    try {
+      await this._abapRequest({ method: 'PATCH', key: ReceiptID, payload });
+    } catch (err) {
+      return req.error(500, `ABAP update failed: ${err.message}`);
+    }
+    return next(); // Let CAP also update local SQLite
   }
 
-  async _grnDelete(req) {
-    const { ReceiptID } = req.params[0];
+  async _grnDelete(req, next) {
+    const { ReceiptID } = req.params?.[0] ?? {};
+    if (!ReceiptID) return next();
     console.log(`[GRN Logger] 🗑️ Fired: DELETE Receipt (${ReceiptID})`);
-    if (!ReceiptID) return req.error(400, 'Cannot delete a receipt with no Receipt ID');
-    await this._abapRequest({ method: 'DELETE', key: ReceiptID });
-    // return undefined → CAP sends 204 No Content
+    try {
+      await this._abapRequest({ method: 'DELETE', key: ReceiptID });
+    } catch (err) {
+      return req.error(500, `ABAP delete failed: ${err.message}`);
+    }
+    return next(); // Let CAP also delete from local SQLite
   }
 
   async _grnVerify(req) {
