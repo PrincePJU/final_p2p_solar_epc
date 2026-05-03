@@ -1277,4 +1277,439 @@ Browser → App Router (xs-app.json)
 
 ---
 
+---
+
+# 13. Frontend Layer — `app/projectmanagement/`
+
+## Overview
+
+The frontend is a **single SAP UI5 application** (`solar.epc.projectmanagement`) that hosts every role-specific screen. It has no separate per-role app — instead, a central `Component.js` with a route guard and `RoleService.js` adapt the entire UI dynamically based on the authenticated user's role. A second standalone app (`solar.epc.managementoverview`) provides the OVP executive dashboard.
+
+**Key frontend files:**
+
+| File | Responsibility |
+|---|---|
+| `webapp/Component.js` | App boot, session management, route guard |
+| `webapp/App.controller.js` | Shell: back-button history, theme switcher, page banner |
+| `webapp/manifest.json` | All 27 routes, 5 OData models, all targets |
+| `webapp/service/RoleService.js` | Role constants, route permissions, access model, todo items |
+| `webapp/login/LoginPage.controller.js` | Credential-based login + XSUAA SSO detection |
+| `webapp/home/HomePage.controller.js` | Role-adaptive home screen |
+| `webapp/management/ManagementDashboard.controller.js` | Management KPI dashboard |
+| `webapp/vendor/QuotationComparison.controller.js` | Side-by-side quotation evaluation |
+
+---
+
+## File: `app/projectmanagement/webapp/manifest.json`
+
+### Purpose
+
+The application manifest is the single configuration source for all routing, data sources, and UI5 library dependencies. It defines 5 OData V4 models and 27 named routes.
+
+### Data Sources and Models
+
+| Model Name | Service URI | Backing CAP Service |
+|---|---|---|
+| (default) | `/project/` | `ProjectService` |
+| `vendorService` | `/vendor/` | `VendorService` |
+| `invoiceService` | `/invoice/` | `InvoiceService` |
+| `procurementService` | `/procurement/` | `ProcurementService` |
+| `dashboardService` | `/dashboard/` | `DashboardService` |
+
+All models use `operationMode: "Server"`, `autoExpandSelect: true`, and `earlyRequests: true` — standard Fiori Elements performance settings.
+
+### Route Map
+
+| Route Name | URL Pattern | Target | Allowed Roles |
+|---|---|---|---|
+| `LoginPage` | `` (empty) | `LoginPage` | All |
+| `HomePage` | `home` | `HomePage` | All |
+| `ProjectsList` | `Projects` | `ProjectsList` | BDM, MANAGEMENT |
+| `ProjectsObjectPage` | `Projects({key})` | `ProjectsObjectPage` | BDM, MANAGEMENT |
+| `EngineeringProjectsList` | `ActiveProjects` | `EngineeringProjectsList` | ENGINEER, MANAGEMENT |
+| `EngineerObjectPage` | `ActiveProjects({key})` | `EngineerObjectPage` | ENGINEER, MANAGEMENT |
+| `SeniorProjectsList` | `SeniorActiveProjects` | `SeniorProjectsList` | PROJECT_MANAGER, MANAGEMENT |
+| `SeniorObjectPage` | `SeniorActiveProjects({key})` | `SeniorObjectPage` | PROJECT_MANAGER, MANAGEMENT |
+| `VendorList` | `VendorMaster` | `VendorList` | PROCUREMENT_OFFICER, PROJECT_MANAGER, MANAGEMENT |
+| `VendorObjectPage` | `VendorMaster({key})` | `VendorObjectPage` | PROCUREMENT_OFFICER, PROJECT_MANAGER, MANAGEMENT |
+| `QuotationComparison` | `CompareQuotations` | `QuotationComparison` | PROJECT_MANAGER, PROCUREMENT_OFFICER, MANAGEMENT |
+| `MRApprovalDashboard` | `MaterialRequests` | `MRApprovalDashboard` | PROJECT_MANAGER, MANAGEMENT |
+| `MRApprovalDetail` | `MaterialRequests({key})` | `MRApprovalDetail` | PROJECT_MANAGER, MANAGEMENT |
+| `ProcurementMRList` | `ApprovedMaterialRequests` | `ProcurementMRList` | PROCUREMENT_OFFICER, PROJECT_MANAGER, MANAGEMENT |
+| `ProcurementMRDetail` | `ApprovedMaterialRequests({key})` | `ProcurementMRDetail` | PROCUREMENT_OFFICER, PROJECT_MANAGER, MANAGEMENT |
+| `GRNList` | `GRNReceipts` | `GRNList` | SITE_ENGINEER, PROCUREMENT_OFFICER, PROJECT_MANAGER, MANAGEMENT |
+| `GRNObjectPage` | `GRNReceipts({key})` | `GRNObjectPage` | SITE_ENGINEER, PROCUREMENT_OFFICER, PROJECT_MANAGER, MANAGEMENT |
+| `DeliveryList` | `Deliveries` | `DeliveryList` | SITE_ENGINEER, PROCUREMENT_OFFICER, PROJECT_MANAGER, MANAGEMENT |
+| `DeliveryObjectPage` | `Deliveries({key})` | `DeliveryObjectPage` | SITE_ENGINEER, PROCUREMENT_OFFICER, PROJECT_MANAGER, MANAGEMENT |
+| `POList` | `PurchaseOrders` | `POList` | PROCUREMENT_OFFICER, PROJECT_MANAGER, MANAGEMENT |
+| `POObjectPage` | `PurchaseOrders({key})` | `POObjectPage` | PROCUREMENT_OFFICER, PROJECT_MANAGER, MANAGEMENT |
+| `InvoiceList` | `Invoices` | `InvoiceList` | FINANCE_OFFICER, MANAGEMENT |
+| `InvoiceObjectPage` | `Invoices({key})` | `InvoiceObjectPage` | FINANCE_OFFICER, MANAGEMENT |
+| `EngineerMRObjectPage` | `ActiveProjects({key})/materialRequests({mrKey})` | `EngineerMRObjectPage` | ENGINEER, MANAGEMENT |
+| `SeniorMRObjectPage` | `SeniorActiveProjects({key})/materialRequests({mrKey})` | `SeniorMRObjectPage` | PROJECT_MANAGER, MANAGEMENT |
+| `GRNAnalytics` | `GRNReceiptAnalytics` | `GRNAnalytics` | MANAGEMENT, PROJECT_MANAGER, PROCUREMENT_OFFICER |
+| `ManagementDashboard` | (custom target) | `ManagementDashboard` | MANAGEMENT only |
+
+**Design Note:** Routes for `EngineerMRObjectPage` and `SeniorMRObjectPage` use nested patterns (`ActiveProjects({key})/materialRequests({mrKey})`) to support deep-linking directly into a Material Request within its parent Project context. This is essential for the MR approval workflow.
+
+---
+
+## File: `webapp/Component.js`
+
+### Purpose
+
+The application component is the central **authentication orchestrator**. It:
+1. Creates a `session` JSONModel shared across all views
+2. Installs a `beforeRouteMatched` guard that blocks unauthorized navigation
+3. Handles login via credentials or restores session from `sessionStorage`
+4. Propagates the `Authorization` header to all 5 OData models after credential login
+
+### Session Model Schema
+
+```json
+{
+  "authPending": true,
+  "authMode": "",
+  "isLocalSimulation": false,
+  "canSwitchRole": false,
+  "currentRole": "MANAGEMENT",
+  "availableRoles": [],
+  "capRoles": [],
+  "uiRoles": [],
+  "userId": "",
+  "userName": "",
+  "email": "",
+  "loggedIn": false,
+  "unauthorized": false,
+  "lastDeniedRoute": ""
+}
+```
+
+`authPending: true` acts as a semaphore — the route guard skips all enforcement while it is `true`, preventing flashes of unauthorized screens during the async `/auth/me()` fetch.
+
+### `loginWithCredentials(username, password)`
+
+Called by `LoginPage.controller.js` on form submit.
+
+**Logic:**
+1. Encodes credentials as `Basic {btoa(username:password)}`
+2. Stores the header in `sessionStorage` under key `solarEpcAuth`
+3. Calls `_loadSession(authHeader)` which fetches `/auth/me()` with the header
+
+### `_loadSession(authHeader)`
+
+The core session bootstrap function.
+
+**Logic:**
+1. Sets `authPending = true`
+2. Calls `GET /auth/me()` with the `Authorization` header
+3. On success: populates all session model properties from the `UserSession` response
+4. Calls `_applyAuthorizationHeader` to inject the header into all 5 OData models
+5. Checks `solarEpcIntendedHash` from `sessionStorage` to restore navigation state on reload
+6. Navigates to `HomePage` if currently on `LoginPage`
+7. On failure: sets `loggedIn = false`, navigates to `LoginPage`, removes stale `sessionStorage`
+
+### `_onBeforeRouteMatched(event)`
+
+The route guard. Runs before every navigation.
+
+**Logic tree:**
+```
+If authPending → skip (auth in progress)
+If route = LoginPage AND loggedIn → redirect to HomePage
+If route = LoginPage → allow (user must log in)
+If NOT loggedIn → redirect to LoginPage
+If RoleService.canAccessRoute(role, routeName) = false →
+    set unauthorized = true, lastDeniedRoute = routeName
+    redirect to HomePage
+Else → allow navigation
+```
+
+---
+
+## File: `webapp/service/RoleService.js`
+
+### Purpose
+
+A pure JavaScript service module (no UI5 dependencies) that is the **single source of truth for all role-based UI decisions** in the frontend. It is consumed by `Component.js`, `HomePage.controller.js`, and `LoginPage.controller.js`.
+
+### Role Constants (`ROLES`)
+
+| Constant | Value | Backend CAP Role | Display Name |
+|---|---|---|---|
+| `BDM` | `"BDM"` | `BDM` | Business Development Manager |
+| `ENGINEER` | `"ENGINEER"` | `Engineer` | Engineer |
+| `PROJECT_MANAGER` | `"PROJECT_MANAGER"` | `ProjectManager` | Senior Engineer |
+| `PROCUREMENT_OFFICER` | `"PROCUREMENT_OFFICER"` | `ProcurementOfficer` | Procurement Officer |
+| `SITE_ENGINEER` | `"SITE_ENGINEER"` | `SiteEngineer` | Site Engineer |
+| `FINANCE_OFFICER` | `"FINANCE_OFFICER"` | `FinanceOfficer` | Finance Officer |
+| `MANAGEMENT` | `"MANAGEMENT"` | `Management` | Management |
+
+**Note:** `PROJECT_MANAGER` is the CAP backend role name but displays as "Senior Engineer" in the UI — a deliberate product decision to map the system role name to the solar EPC org structure terminology.
+
+### `ROUTE_PERMISSIONS`
+
+A map of every route name to the roles that can access it. Used by `canAccessRoute(role, routeName)`. Unknown routes default to open (no restriction). Key restrictions:
+
+- `ManagementDashboard` → `MANAGEMENT` only
+- `ProjectsList` / `ProjectsObjectPage` → `BDM`, `MANAGEMENT` only (full project CRUD view)
+- `EngineeringProjectsList` / `EngineerObjectPage` → `ENGINEER`, `MANAGEMENT` only
+- `InvoiceList` / `InvoiceObjectPage` → `FINANCE_OFFICER`, `MANAGEMENT` only
+
+### `ROLE_ACCESS`
+
+Per-role configuration object used by `getAccessModel()` to produce a flat JSONModel-bindable object. Controls:
+
+- **`tiles`**: Which workspace tiles appear on HomePage (engineeringProjects, procurement, siteOps, vendorRebates, finance)
+- **`features`**: `insightCard` flag (PROJECT_MANAGER, PROCUREMENT_OFFICER, FINANCE_OFFICER, MANAGEMENT see an insight card)
+- **`apps`**: App launcher visibility (13 app shortcuts)
+
+**Role tile visibility summary:**
+
+| Role | Engineering | Procurement | Site Ops | Vendor Rebates | Finance |
+|---|---|---|---|---|---|
+| BDM | Yes | No | No | No | No |
+| ENGINEER | Yes | No | No | No | No |
+| PROJECT_MANAGER | Yes | Yes | No | No | No |
+| PROCUREMENT_OFFICER | No | Yes | No | No | No |
+| SITE_ENGINEER | No | No | Yes | No | No |
+| FINANCE_OFFICER | No | No | No | No | Yes |
+| MANAGEMENT | Yes | Yes | Yes | Yes | Yes |
+
+### `ROLE_TODOS`
+
+Role-specific pre-seeded task items shown in the "Action Center" on HomePage. Each todo has `task`, `project`, `role`, `icon`, `status`, `state`. Clicking a todo routes to the relevant functional screen via `onTodoPress`.
+
+### Public API Methods
+
+| Method | Purpose |
+|---|---|
+| `canAccessRoute(role, routeName)` | Returns `true` if the role is in `ROUTE_PERMISSIONS[routeName]` |
+| `getAccessModel(role)` | Returns flat object for JSONModel: `tile_*`, `app_*`, `insightCard` |
+| `getTodos(role)` | Returns the role's pre-seeded todo list |
+| `getPrimaryRole(uiRoles[])` | Returns highest-priority role from the `ROLE_PRIORITY` array |
+| `getRoleOptions(uiRoles[])` | Returns `[{key, text}]` array for a `Select` control |
+| `getDisplayName(role)` | Returns display string (e.g., `"Senior Engineer"` for `PROJECT_MANAGER`) |
+
+---
+
+## File: `webapp/login/LoginPage.controller.js` + `LoginPage.view.xml`
+
+### Purpose
+
+The first screen. Handles both credential-based authentication (local/dev) and XSUAA SSO (BTP/production).
+
+### View Structure
+
+A centered `FlexBox` containing:
+- Brand icon (`sap-icon://energy-savings-item`) + title "SolarSage EPC"
+- Username `Input` bound to `login>/username`
+- Password `Input` (type Password) bound to `login>/password`
+- `MessageStrip` showing the dev user cheat sheet (users and password `pass`)
+- "Continue" `Button` wired to `onLoginPress`
+- Hidden `Select` for role pre-selection (not currently visible in production flow)
+
+### `onLoginPress` Logic
+
+```
+If both fields empty AND authMode = "xsuaa" → attempt XSUAA silent SSO via _loadSession()
+If both fields empty AND authMode ≠ "xsuaa" → show warning "Enter credentials"
+If one field empty → show warning "Enter both fields"
+If both filled → call Component.loginWithCredentials(username, password)
+    On failure → MessageBox.error("Invalid username or password")
+```
+
+This means in BTP production, users can click "Continue" with empty fields to trigger the XSUAA token check. Locally, they must enter credentials from the dev user list.
+
+---
+
+## File: `webapp/App.controller.js`
+
+### Purpose
+
+Controls the outer `App.view.xml` shell — the persistent frame around all pages. Provides:
+1. **Back-button history stack** — manually tracks hash history in `_aHashHistory` array
+2. **Theme switcher** — ActionSheet with 4 SAP Horizon/Quartz themes via `Theming.setTheme()`
+3. **Page banner** — context-sensitive promotional banner that appears above certain pages (e.g., `VendorList` shows a "Vendor Evaluation Workspace" banner with a "Compare Quotations" next-step button)
+
+### `_onRouteMatched`
+
+Fires on every route change. Updates the back-button visibility (hidden on `LoginPage` and `HomePage`) and the page banner config.
+
+### `_updatePageBanner`
+
+A configuration-driven approach: a `mBannerConfig` map defines which routes show banners and what their content is. Only `VendorList` currently has a banner configured, guiding users from vendor browsing to the `QuotationComparison` screen.
+
+---
+
+## File: `webapp/home/HomePage.controller.js` + `HomePage.view.xml`
+
+### Purpose
+
+The role-adaptive home screen. The same view renders differently for all 7 roles — showing only the workspace tiles, KPI cards, app shortcuts, and action items relevant to each role.
+
+### `onInit` Logic
+
+1. Reads `currentRole` from the shared `session` model
+2. Calls `_initViewModel(role)` to build the `view` JSONModel with all display data
+3. Attaches a `propertyChange` listener on the session model to react to role switches (dev mode)
+4. Shows `MessageBox.warning` if redirected here due to an access denial (`unauthorized = true`)
+
+### View Model Properties
+
+| Property | Type | What It Drives |
+|---|---|---|
+| `greeting` | String | Time-aware greeting (Good morning/afternoon/evening) |
+| `userName` | String | Displayed in the header |
+| `role` | String | Role display name below username |
+| `todos` | Array | Action Center todo list |
+| `todosCount` | Integer | Badge count on Action Center card |
+| `access` | Object | Flat `RoleService.getAccessModel()` result — drives all `visible="{view>access/tile_...}"` bindings |
+| `kpis` | Object | KPI values per workspace tile |
+| `todoRows` | Integer | GridContainer row span for the Action Center card (dynamic height) |
+| `editMode` | Boolean | Enables drag-and-drop tile reordering |
+
+### `ROUTE_BY_ROLE` Mapping
+
+Used by `onNavPress` when a workspace tile is tapped.
+
+| Role | "Engineering & Projects" tile | "Procurement" tile | "Site Operations" tile | "Finance Cockpit" tile | default |
+|---|---|---|---|---|---|
+| BDM | `ProjectsList` | — | — | — | `ProjectsList` |
+| ENGINEER | `EngineeringProjectsList` | — | — | — | `EngineeringProjectsList` |
+| PROJECT_MANAGER | `SeniorProjectsList` | `ProcurementMRList` | — | — | `SeniorProjectsList` |
+| PROCUREMENT_OFFICER | — | `POList` | — | — | `POList` |
+| SITE_ENGINEER | — | — | `GRNList` | — | `GRNList` |
+| FINANCE_OFFICER | — | — | — | `InvoiceList` | `InvoiceList` |
+| MANAGEMENT | `ProjectsList` | `POList` | `GRNList` | `InvoiceList` | `ManagementDashboard` |
+
+### `onAppPress`
+
+Handles clicks on the app launcher grid. Maps `appKey` data attributes to target routes:
+
+| App Key | Target Route |
+|---|---|
+| `manageVendors` | `VendorList` |
+| `createMR` | `EngineeringProjectsList` |
+| `approveMR` | `MRApprovalDashboard` |
+| `compareQuotations` | `QuotationComparison` |
+| `approvedMRs` | `ProcurementMRList` |
+| `createPO` | `POList` |
+| `trackDeliveries` | `DeliveryList` |
+| `postGR` / `reportDamage` | `GRNList` |
+| `validateInvoice` | `InvoiceList` |
+| `managementOverview` | Full-page redirect to `/managementoverview/webapp/index.html` |
+| `grnAnalytics` | `GRNAnalytics` |
+
+**Special case for `managementOverview`:** Uses `window.location.href` instead of the router — the OVP app is a **separate** `sap.ovp` application at a different URL path, not a route within the main app.
+
+### `onSwitchUser` (dev mode only)
+
+Opens a `DevUserSwitcher.fragment.xml` popover with the list of dev users. On selection, calls `Component.loginWithCredentials(userId, "pass")` then `window.location.reload()` to restart the app with the new identity.
+
+### `formatTodoRows`
+
+Calculates the GridContainer row span for the Action Center card dynamically:
+- Counts visible workspace tiles (each tile is 2 rows high)
+- Uses `Math.ceil(tileCount / 2) * 2` to compute total tile rows
+- Reduces by 25% with `Math.floor(rows * 0.75)` and clamps to minimum 3
+
+---
+
+## File: `webapp/management/ManagementDashboard.controller.js` + view
+
+### Purpose
+
+A **MANAGEMENT-only** live KPI dashboard that reads directly from `DashboardService` OData views. Replaces the static mock data on `HomePage` with real aggregated data for executives.
+
+### KPI Cards (6 total, using `sap.f.cards.NumericHeader`)
+
+| KPI | Source View | Calculation | State Logic |
+|---|---|---|---|
+| Active Projects | `ProjectSummary` | `COUNT(status = 'ACTIVE')` | `> 0 → Good` |
+| Total PO Spend | `ProcurementKPI` | `SUM(totalPOValue) / 1e7` (in Cr INR) | `> 0 → Good` |
+| On-Time Delivery | `DeliveryPerformance` | `SUM(onTime) / SUM(totalDeliveries) × 100` | `≥ 85% → Good`, `≥ 70% → Critical`, `< 70% → Error` |
+| Invoice Clearance | `InvoiceMatchingSummary` | `(SUM(paid) + SUM(matched)) / SUM(totalInvoices) × 100` | `≥ 80% → Good`, `≥ 60% → Critical`, `< 60% → Error` |
+| Budget Utilization | `ProjectSummary` | `SUM(spentAmount) / SUM(budget) × 100` | `> 85% → Error`, `> 65% → Critical`, `else → Good` |
+| Rejection Rate | `ReceiptQuality` | `SUM(totalRejected) / SUM(totalDispatched) × 100` | `≤ 2% → Good`, `≤ 5% → Critical`, `> 5% → Error` |
+
+### Tables (3 total)
+
+| Table | Source View | Sorted By |
+|---|---|---|
+| Active Projects — Budget Overview | `ProjectSummary` | Default |
+| Vendor Performance Leaderboard | `VendorPerformanceSummary` | `performanceScore DESC` |
+| Procurement Summary — By Project | `ProcurementKPI` | Default |
+
+### `_loadDashboard`
+
+Fires 6 parallel `bindList(...).requestContexts()` calls to `dashboardService`. Each is `try/catch`-wrapped and fails silently with a `console.warn` — the dashboard degrades gracefully if any view is temporarily unavailable.
+
+---
+
+## File: `webapp/vendor/QuotationComparison.controller.js`
+
+### Purpose
+
+A custom screen (not a Fiori Elements template) that provides a **side-by-side vendor quotation comparison** for a selected Material Request. Procurement Officers and Senior Engineers use this to evaluate competing bids and select the winning vendor.
+
+### Workflow
+
+1. On `onInit`: fetches `ApprovedMaterialRequests` from `VendorService` with `$expand=project`
+2. User selects an MR from the dropdown → MR details panel populates
+3. User clicks "Compare" → calls `VendorService.compareQuotations(materialRequestId)` OData function
+4. Function response is enriched with vendor details fetched by ID
+5. Results display sorted ascending by `totalAmount` (cheapest first)
+6. Each row shows `isBestPrice` flag and `savingsVsAvg` (how much more expensive vs cheapest)
+
+### Statistics Panel
+
+| Metric | Calculation |
+|---|---|
+| Best Price | `MIN(totalAmount)` |
+| Best Vendor | Vendor name of the cheapest quotation |
+| Average Price | `SUM(totalAmount) / COUNT` |
+| Fastest Delivery | `MIN(deliveryLeadDays)` |
+| Savings vs Average | `avgPrice - bestPrice` |
+
+### `onSelectVendor`
+
+Programmatically creates a `sap.m.Dialog` (not an XML fragment) that prompts for a `selectionReason`. On confirm:
+1. Calls `VendorService.VendorQuotations(ID,IsActiveEntity)/VendorService.selectVendor(...)` OData action
+2. On success: refreshes the comparison results (so sibling rejections are immediately reflected)
+
+---
+
+# 14. Frontend Application — `app/managementoverview/`
+
+## File: `app/managementoverview/webapp/manifest.json`
+
+### Purpose
+
+A **standalone SAP OVP (Overview Page) application** for executive-level monitoring. It uses the `sap.ovp` framework to render a resizable card layout, each card backed by a `DashboardService` view. This app is launched via `window.location.href` from `HomePage.onAppPress` when `managementOverview` is clicked.
+
+### Architecture
+
+- `rootView`: `sap.ovp.app.Main` — the OVP framework's built-in root view
+- `globalFilterModel`: `dashboardService` — OVP's global filter bar is connected to the `DashboardService` model
+- `containerLayout`: `resizable` — cards can be resized and repositioned by the user
+
+### OVP Cards
+
+| Card ID | Template | Entity Set | Content |
+|---|---|---|---|
+| `card01_budget` | `sap.ovp.cards.v4.table` | `ProjectSummary` | Budget vs Spent by project with utilization % |
+| `card02_receipt_quality` | `sap.ovp.cards.v4.table` | `ReceiptQuality` | Accepted vs Rejected quantities by project |
+| `card03_vendors` | `sap.ovp.cards.v4.table` | `VendorPerformanceSummary` | Vendor scores, OTD%, orders |
+| `card04_procurement` | `sap.ovp.cards.v4.table` | `ProcurementKPI` | POs total/confirmed/delivered per project |
+| `card05_invoices` | `sap.ovp.cards.v4.list` | `InvoiceMatchingSummary` | Invoice matching status by vendor |
+| `card06_delivery` | `sap.ovp.cards.v4.table` | `DeliveryPerformance` | OTD vs delayed deliveries by vendor |
+| `card07_threeway` | `sap.ovp.cards.v4.table` | `ThreeWayMatchSummary` | Match status counts and variance by project |
+
+All 7 cards directly consume `DashboardService` read-only views — no application logic needed. The `sap.ovp` framework handles pagination, filtering, and sorting automatically.
+
+**Design Note:** The OVP app uses `sap.ovp` and `sap.viz` libraries for charting. It connects to the same `/dashboard/` OData endpoint as the `ManagementDashboard` custom screen. The key difference: OVP provides a fully resizable card layout with built-in OData integration; the custom `ManagementDashboard` provides hand-crafted KPI tiles with precise state-color logic.
+
+---
+
 *End of Backend Documentation*

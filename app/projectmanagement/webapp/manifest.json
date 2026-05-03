@@ -185,6 +185,11 @@
           "target": "HomePage"
         },
         {
+          "pattern": "management-dashboard",
+          "name": "ManagementDashboard",
+          "target": "ManagementDashboard"
+        },
+        {
           "pattern": "GRNReceiptAnalytics:?query:",
           "name": "GRNAnalytics",
           "target": "GRNAnalytics"
@@ -1146,6 +1151,12 @@
           "id": "HomePage",
           "name": "solar.epc.projectmanagement.home.HomePage",
           "viewLevel": 1
+        },
+        "ManagementDashboard": {
+          "type": "View",
+          "id": "ManagementDashboard",
+          "name": "solar.epc.projectmanagement.dashboard.ManagementDashboard",
+          "viewLevel": 2
         },
         "QuotationComparison": {
           "type": "View",

@@ -61,6 +61,36 @@ sap.ui.define([
             return this._loadSession(sAuthHeader);
         },
 
+        logout: function () {
+            const oSessionModel = this.getModel("session");
+
+            sessionStorage.removeItem("solarEpcAuth");
+            sessionStorage.removeItem("solarEpcIntendedHash");
+
+            this._forEachHttpHeaderModel(function (oModel) {
+                this._clearAuthorizationHeader(oModel);
+            }.bind(this));
+
+            oSessionModel.setData({
+                authPending: false,
+                authMode: "",
+                isLocalSimulation: false,
+                canSwitchRole: false,
+                currentRole: RoleService.ROLES.MANAGEMENT,
+                availableRoles: [],
+                capRoles: [],
+                uiRoles: [],
+                userId: "",
+                userName: "",
+                email: "",
+                loggedIn: false,
+                unauthorized: false,
+                lastDeniedRoute: ""
+            });
+
+            this.getRouter().navTo("LoginPage", {}, true);
+        },
+
         _loadSession: function (sAuthHeader) {
             const oSessionModel = this.getModel("session");
             const oHeaders = sAuthHeader ? { Authorization: sAuthHeader } : {};
@@ -127,10 +157,25 @@ sap.ui.define([
         },
 
         _applyAuthorizationHeader: function (sAuthHeader) {
+            this._forEachHttpHeaderModel(function (oModel) {
+                oModel.changeHttpHeaders({ Authorization: sAuthHeader });
+            });
+        },
+
+        _clearAuthorizationHeader: function (oModel) {
+            const mHeaders = typeof oModel.getHttpHeaders === "function"
+                ? Object.assign({}, oModel.getHttpHeaders())
+                : {};
+
+            delete mHeaders.Authorization;
+            oModel.changeHttpHeaders(mHeaders);
+        },
+
+        _forEachHttpHeaderModel: function (fnCallback) {
             ["", "vendorService", "invoiceService", "procurementService", "receiptService", "dashboardService"].forEach(function (sModelName) {
                 const oModel = sModelName ? this.getModel(sModelName) : this.getModel();
                 if (oModel && typeof oModel.changeHttpHeaders === "function") {
-                    oModel.changeHttpHeaders({ Authorization: sAuthHeader });
+                    fnCallback(oModel);
                 }
             }.bind(this));
         },

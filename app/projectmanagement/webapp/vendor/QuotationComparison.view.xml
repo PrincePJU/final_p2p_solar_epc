@@ -10,19 +10,25 @@
             <m:Toolbar class="quotationTopBar">
                 <m:Button
                     icon="sap-icon://nav-back"
-                    text="Back"
-                    type="Transparent"
-                    press=".onNavBack"
-                    class="quotationBackBtn" />
-                <m:ToolbarSpacer />
-                <m:Title text="Quotation Evaluation" level="H4" class="quotationTopBarTitle" />
-                <m:ToolbarSpacer />
-                <m:Button
-                    icon="sap-icon://home"
                     text="Back to Home"
                     type="Transparent"
                     press=".onNavBack"
                     class="quotationBackBtn" />
+                <m:ToolbarSeparator class="quotationTopBarSep" />
+                <m:HBox alignItems="Center" class="sapUiTinyMarginEnd">
+                    <m:HBox alignItems="Center" justifyContent="Center" class="quotationTopBarIconShell sapUiTinyMarginEnd">
+                        <core:Icon src="sap-icon://compare" color="#ffffff" size="0.95rem" />
+                    </m:HBox>
+                    <m:VBox>
+                        <m:Title text="Quotation Evaluation" level="H6" class="quotationTopBarTitle" />
+                        <m:Text text="SolarSage EPC · Vendor comparison workspace" class="quotationTopBarSub" />
+                    </m:VBox>
+                </m:HBox>
+                <m:ToolbarSpacer />
+                <m:HBox alignItems="Center" class="quotationLiveBadge">
+                    <core:Icon src="sap-icon://circle-task-2" size="0.55rem" />
+                    <m:Text text="LIVE" />
+                </m:HBox>
             </m:Toolbar>
         </m:subHeader>
         <m:content>

@@ -1195,6 +1195,19 @@ module.exports = class ProjectService extends cds.ApplicationService {
   // ═══════════════════════════════════════════════════════════════
 
   async _grnAnalyticsRead(req) {
+    // Let CAP/database handle FE ALP queries natively first. This covers
+    // $apply/groupby/aggregate requests for charts much more reliably than
+    // hand-parsing the incoming query shape.
+    try {
+      const db = await cds.connect.to('db');
+      const result = await db.run(req.query);
+      if (result !== undefined && result !== null) {
+        return result;
+      }
+    } catch (e) {
+      console.warn('[GRNAnalytics] Native DB query failed, falling back to manual handler:', e.message);
+    }
+
     // ── Load source rows from GRNReceipts SQLite (bypasses ABAP proxy) ──────
     let rows = [];
     try {

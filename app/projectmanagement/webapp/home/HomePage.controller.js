@@ -19,7 +19,7 @@ sap.ui.define([
         "PROCUREMENT_OFFICER": { "Engineering & Projects": "ProjectsList", "Procurement": "POList", default: "POList" },
         "SITE_ENGINEER": { "Engineering & Projects": "ProjectsList", "Site Operations": "GRNList", default: "GRNList" },
         "FINANCE_OFFICER": { "Engineering & Projects": "ProjectsList", "Finance Cockpit": "InvoiceList", default: "InvoiceList" },
-        "MANAGEMENT": { "Engineering & Projects": "ProjectsList", "Procurement": "ProcurementMRList", "Site Operations": "DeliveryList", "Finance Cockpit": "InvoiceList", default: "HomePage" }
+        "MANAGEMENT": { "MyHome": "ManagementDashboard", "Engineering & Projects": "ProjectsList", "Procurement": "ProcurementMRList", "Site Operations": "DeliveryList", "Finance Cockpit": "InvoiceList", default: "ManagementDashboard" }
     };
 
     return Controller.extend("solar.epc.projectmanagement.home.HomePage", {
@@ -34,7 +34,8 @@ sap.ui.define([
             this._initViewModel(sRole);
 
             // Keep view model in sync when session role changes (e.g. from another view)
-            oSessionModel.attachPropertyChange(this._onSessionRoleChange, this);
+            this._oRoleBinding = oSessionModel.bindProperty("/currentRole");
+            this._oRoleBinding.attachChange(this._onSessionRoleChange, this);
 
             // Show access-denied message if we were redirected here
             if (oSessionModel.getProperty("/unauthorized")) {
@@ -49,19 +50,31 @@ sap.ui.define([
         },
 
         onExit: function () {
-            this.getOwnerComponent().getModel("session")
-                .detachPropertyChange(this._onSessionRoleChange, this);
+            if (this._oRoleBinding) {
+                this._oRoleBinding.detachChange(this._onSessionRoleChange, this);
+            }
+            if (this._oTodoResizeObserver) {
+                this._oTodoResizeObserver.disconnect();
+                this._oTodoResizeObserver = null;
+            }
+        },
+
+        onAfterRendering: function () {
+            this._syncHomeSplitterBarHeight();
         },
 
         // ── Initialisation helpers ────────────────────────────────────────────
 
         _initViewModel: function (sRole) {
+            // Fallback so the Action Center isn't empty while session auth is pending
+            sRole = sRole || "MANAGEMENT";
+
             const hour = new Date().getHours();
             const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
-            const todos = RoleService.getTodos(sRole);
             const sUserName = this.getOwnerComponent().getModel("session").getProperty("/userName") || "User";
             const oAccess = RoleService.getAccessModel(sRole);
             const oKPIs = this._getKPIData(sRole);
+            const aRoleTodos = RoleService.getTodos(sRole);
 
             const oModel = new JSONModel({
                 greeting: greeting,
@@ -69,10 +82,10 @@ sap.ui.define([
                 role: RoleService.getDisplayName(sRole),
                 systemName: "SolarSage EPC",
                 currentRole: sRole,
-                todos: todos,
-                todosCount: todos.length,
+                todos: aRoleTodos,
+                todosCount: aRoleTodos.length,
                 access: oAccess,
-                todoRows: this.formatTodoRows(oAccess),
+                todoRows: this.formatTodoRows(oAccess, aRoleTodos),
                 kpis: oKPIs,
                 editMode: false
             });
@@ -81,19 +94,19 @@ sap.ui.define([
 
         _applyRole: function (sRole) {
             const oModel = this.getView().getModel("view");
-            const todos = RoleService.getTodos(sRole);
             const oAccess = RoleService.getAccessModel(sRole);
             const oKPIs = this._getKPIData(sRole);
-
+            const aRoleTodos = RoleService.getTodos(sRole);
+            
             oModel.setProperty("/role", RoleService.getDisplayName(sRole));
             oModel.setProperty("/currentRole", sRole);
             oModel.setProperty("/userName", this.getOwnerComponent().getModel("session").getProperty("/userName") || "User");
-            oModel.setProperty("/todos", todos);
-            oModel.setProperty("/todosCount", todos.length);
+            oModel.setProperty("/todos", aRoleTodos);
+            oModel.setProperty("/todosCount", aRoleTodos.length);
             oModel.setProperty("/access", oAccess);
             oModel.setProperty("/kpis", oKPIs);
 
-            const iTodoRows = this.formatTodoRows(oAccess);
+            const iTodoRows = this.formatTodoRows(oAccess, aRoleTodos);
             oModel.setProperty("/todoRows", iTodoRows);
 
             // Force GridContainer to resize by explicitly setting layoutData and invalidating parent
@@ -180,6 +193,10 @@ sap.ui.define([
             });
         },
 
+        onLogout: function () {
+            this.getOwnerComponent().logout();
+        },
+
         onSelectUser: function (oEvent) {
             const oListItem = oEvent.getParameter("listItem");
             const sUserId = oListItem.data("userId");
@@ -202,40 +219,23 @@ sap.ui.define([
         },
 
         onTodoPress: function (oEvent) {
-            const oCtx = oEvent.getSource().getBindingContext("view");
-            const sRole = oCtx.getProperty("role") || "";
-            const oRouter = this.getOwnerComponent().getRouter();
-            const sCurrentRole = this.getView().getModel("view").getProperty("/currentRole");
+            const oItem = oEvent.getSource();
+            
+            const oCtx = oItem.getBindingContext("view");
+            const sRoute = oCtx ? oCtx.getProperty("route") : null;
+            const sTask = oCtx ? oCtx.getProperty("title") : "Task";
 
-            // Route todo items to the relevant functional screen
-            if (sRole.includes("Senior") || sCurrentRole === "PROJECT_MANAGER") {
-                if (sRole.includes("Senior") || sRole.includes("Executive")) {
-                    oRouter.navTo("MRApprovalDashboard");
-                    return;
+            const oRouter = this.getOwnerComponent().getRouter();
+
+            if (sRoute) {
+                if (sRoute === "ManagementDashboard") {
+                    window.location.href = window.location.origin + "/managementoverview/webapp/index.html";
+                } else {
+                    oRouter.navTo(sRoute);
                 }
-            }
-            if (sCurrentRole === "ENGINEER") {
-                oRouter.navTo("EngineeringProjectsList");
-                return;
-            }
-            if (sCurrentRole === "BDM") {
-                oRouter.navTo("ProjectsList");
-                return;
-            }
-            if (sCurrentRole === "PROCUREMENT_OFFICER") {
-                oRouter.navTo("POList");
-                return;
-            }
-            if (sCurrentRole === "SITE_ENGINEER") {
-                oRouter.navTo("GRNList");
-                return;
-            }
-            if (sCurrentRole === "FINANCE_OFFICER") {
-                oRouter.navTo("InvoiceList");
                 return;
             }
             // fallback
-            const sTask = oCtx.getProperty("task");
             MessageToast.show("Opening: " + sTask);
         },
 
@@ -250,7 +250,9 @@ sap.ui.define([
             const oRoleRoutes = ROUTE_BY_ROLE[sRole];
             let sRoute = oRoleRoutes && oRoleRoutes[sHeader]
                 ? oRoleRoutes[sHeader]
-                : sHeader === "MyHome" ? "HomePage" : oRoleRoutes?.default;
+                : sHeader === "MyHome"
+                    ? (sRole === "MANAGEMENT" ? "ManagementDashboard" : "HomePage")
+                    : oRoleRoutes?.default;
 
             if (!sRoute) {
                 MessageToast.show("'" + sHeader + "' module is coming soon");
@@ -341,7 +343,7 @@ sap.ui.define([
 
         // ── Formatters ────────────────────────────────────────────────────────
 
-        formatTodoRows: function (oAccess) {
+        formatTodoRows: function (oAccess, aTodos) {
             if (!oAccess) {
                 return 4;
             }
@@ -352,28 +354,46 @@ sap.ui.define([
             if (oAccess.tile_vendorRebates) iCount++;
             if (oAccess.tile_finance) iCount++;
 
-            // 2 tiles per row next to the todoCard, each tile is 2 rows high
-            let iRows = Math.ceil(iCount / 2) * 2;
+            const iTodoCount = Array.isArray(aTodos) ? aTodos.length : 0;
+            const iBaseRows = iCount <= 3 ? 3 : 4;
+            const iExtraRows = Math.max(0, Math.ceil(Math.max(0, iTodoCount - 2) / 2));
 
-            // If there is only 1 row of workspaces (iRows === 2), 
-            // reduce the Action Center height to half of the default max height (3 rows).
-            if (iRows === 2) {
-                return 2;
-            }
-
-            let iReduced = Math.floor(iRows * 0.75);
-            return Math.max(3, iReduced);
+            return iBaseRows + iExtraRows;
         },
 
         // ── Private ───────────────────────────────────────────────────────────
 
-        _onSessionRoleChange: function (oEvent) {
-            const sPath = oEvent.getParameter("path");
-            if (sPath === "/currentRole") {
-                const sRole = oEvent.getSource().getProperty("/currentRole");
-                if (this.getView().getModel("view").getProperty("/currentRole") !== sRole) {
-                    this._applyRole(sRole);
+        _onSessionRoleChange: function () {
+            const sRole = this._oRoleBinding.getValue();
+            if (sRole && this.getView().getModel("view").getProperty("/currentRole") !== sRole) {
+                this._applyRole(sRole);
+            }
+        },
+
+        _syncHomeSplitterBarHeight: function () {
+            const oTodoPane = this.byId("homeMainSplitter")?.getContentAreas?.()[0];
+            if (!oTodoPane) {
+                return;
+            }
+
+            const oTodoDom = oTodoPane.getDomRef();
+            const oSplitterDom = this.byId("homeMainSplitter")?.getDomRef();
+            if (!oTodoDom || !oSplitterDom) {
+                return;
+            }
+
+            const fnApplyHeight = function () {
+                const oBar = oSplitterDom.querySelector(".sapUiLoSplitterBar");
+                if (oBar) {
+                    oBar.style.height = oTodoDom.offsetHeight + "px";
                 }
+            };
+
+            fnApplyHeight();
+
+            if (!this._oTodoResizeObserver && typeof ResizeObserver !== "undefined") {
+                this._oTodoResizeObserver = new ResizeObserver(fnApplyHeight);
+                this._oTodoResizeObserver.observe(oTodoDom);
             }
         }
     });

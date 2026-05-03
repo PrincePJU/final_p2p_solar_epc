@@ -90,11 +90,10 @@ sap.ui.define([
             const oComponent = this.getOwnerComponent();
 
             // Pull OData models registered on the app component
-            const oMainModel      = oComponent.getModel("");
+            const oMainModel      = oComponent.getModel();
             const oProcModel      = oComponent.getModel("procurementService");
             const oDashboardModel = oComponent.getModel("dashboardService");
             const oInvoiceModel   = oComponent.getModel("invoiceService");
-            const oReceiptModel   = oComponent.getModel("receiptService");
 
             const aLoads = [];
 
