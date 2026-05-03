@@ -56,15 +56,11 @@ module.exports = class ProjectService extends cds.ApplicationService {
     this.before(['CREATE', 'UPDATE', 'DELETE'], MaterialRequests, this._checkProjectActiveGate.bind(this));
     this.before(['CREATE', 'UPDATE', 'DELETE'], ActiveProjects_MaterialRequests, this._checkProjectActiveGate.bind(this));
     this.before(['CREATE', 'UPDATE', 'DELETE'], SeniorActiveProjects_MaterialRequests, this._checkProjectActiveGate.bind(this));
-    this.before('UPDATE', Projects, this._preventHeaderUpdateByEngineer.bind(this));
-    this.before('UPDATE', ActiveProjects, this._preventHeaderUpdateByEngineer.bind(this));
-
     // ── DRAFT ACTIVATION — bypass gate checks for ActiveProjects draft ──
-    // CAP fires UPDATE before draftActivate; the handlers above would block
-    // activation of engineer-owned drafts. We handle the activate itself
-    // explicitly and suppress the gate on IsActiveEntity=false payloads.
-    this.on('draftActivate', ActiveProjects, this._handleDraftActivate.bind(this));
-    this.on('draftActivate', SeniorActiveProjects, this._handleDraftActivate.bind(this));
+    // Must use `before` (not `on`) so the flag is set BEFORE CAP fires the
+    // internal before-UPDATE hooks.
+    this.before('draftActivate', ActiveProjects, this._handleDraftActivate.bind(this));
+    this.before('draftActivate', SeniorActiveProjects, this._handleDraftActivate.bind(this));
 
     // ── PROJECT ACTIONS ───────────────────────────────────────────
     this.on('activateProject', Projects, this._activateProject.bind(this));
@@ -73,6 +69,8 @@ module.exports = class ProjectService extends cds.ApplicationService {
     this.on('cancelProject', Projects, this._cancelProject.bind(this));
 
     // ── MATERIAL REQUEST ACTIONS (all entity paths) ───────────────
+    // submitRequest is also called through the draft composition path
+    // (ActiveProjects.drafts/materialRequests) so register without entity too.
     const mrEntities = [MaterialRequests, ActiveProjects_MaterialRequests, SeniorActiveProjects_MaterialRequests];
     for (const entity of mrEntities) {
       this.on('submitRequest', entity, this._submitRequest.bind(this));
@@ -80,6 +78,7 @@ module.exports = class ProjectService extends cds.ApplicationService {
       this.on('rejectRequest', entity, this._rejectRequest.bind(this));
       this.on('closeRequest', entity, this._closeRequest.bind(this));
     }
+    this.on('submitRequest', this._submitRequest.bind(this));
 
     // ── VENDOR MASTER ACTIONS ─────────────────────────────────────
     this.on('activateVendor', VendorMaster, this._activateVendor.bind(this));
@@ -430,23 +429,6 @@ module.exports = class ProjectService extends cds.ApplicationService {
     }
   }
 
-  async _preventHeaderUpdateByEngineer(req) {
-    // Skip during draft activation — full entity payload is written back by CAP, not a real header edit
-    if (req.data.IsActiveEntity === true) return;
-    // Also skip if this is a draft-activate payload (sent with IsActiveEntity=false but via draftActivate action)
-    if (req._.draftActivate) return;
-
-    if (req.user && req.user.is('Engineer') && !req.user.is('BDM') && !req.user.is('Management')) {
-      const updatedFields = Object.keys(req.data).filter(key =>
-        !['ID', 'IsActiveEntity', 'HasActiveEntity', 'HasDraftEntity', 'DraftAdministrativeData_DraftUUID', 'boqItems', 'materialRequests'].includes(key)
-      );
-
-      if (updatedFields.length > 0) {
-        return req.error(403, `Engineers are restricted to editing Bill of Quantities and Material Requests. Modifying project header details is not allowed.`);
-      }
-    }
-  }
-
   async _validateRequestItem(req) {
     const item = req.data;
     if (!item.requestedQty || item.requestedQty <= 0) {
@@ -495,11 +477,9 @@ module.exports = class ProjectService extends cds.ApplicationService {
   // DRAFT ACTIVATION HANDLER
   // ═══════════════════════════════════════════════════════════════
 
-  async _handleDraftActivate(req, next) {
+  async _handleDraftActivate(req) {
     // Mark request so nested before-UPDATE hooks know this is draft activation
     if (req._) req._.draftActivate = true;
-    // Delegate to the default CAP draft activation
-    return next();
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -561,7 +541,9 @@ module.exports = class ProjectService extends cds.ApplicationService {
 
   async _submitRequest(req) {
     const { ID } = req.params[0];
-    const mr = await SELECT.one.from(this.entities.MaterialRequests).where({ ID });
+    let mr = await SELECT.one.from(this.entities.MaterialRequests).where({ ID });
+    // Draft MR (IsActiveEntity=false) lives in the drafts table, not the active entity
+    if (!mr) mr = await SELECT.one.from(this.entities.MaterialRequests.drafts).where({ ID });
     if (!mr) return req.error(404, `Material Request ${ID} not found`);
     if (mr.status !== 'DRAFT') {
       return req.error(400, `Only DRAFT requests can be submitted. Current status: ${mr.status}`);

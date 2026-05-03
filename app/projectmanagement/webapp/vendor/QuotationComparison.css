@@ -9,19 +9,18 @@
 
 .quotationTopBar {
     padding: 0.35rem 1rem;
-    background: rgba(255, 255, 255, 0.88);
-    backdrop-filter: blur(10px);
-    border-bottom: 1px solid rgba(16, 35, 59, 0.08);
+    background: var(--sol-navy);
+    border-bottom: 1px solid var(--sol-border);
 }
 
 .quotationTopBarTitle {
-    color: #18314f !important;
+    color: #ffffff !important;
     font-weight: 700 !important;
 }
 
 .quotationBackBtn .sapMBtnInner {
     border-radius: 999px;
-    color: #0a6ed1;
+    color: rgba(255,255,255,0.8);
     font-weight: 600;
 }
 
@@ -37,8 +36,7 @@
 
 .quotationHeroCard {
     padding: 2rem;
-    background:
-        linear-gradient(135deg, rgba(7, 44, 87, 0.96) 0%, rgba(10, 110, 209, 0.92) 48%, rgba(0, 168, 150, 0.9) 100%);
+    background: linear-gradient(135deg, var(--sol-navy) 0%, var(--sol-navy-mid) 100%);
     color: #ffffff;
 }
 
@@ -146,17 +144,16 @@
       height: 2.8rem;
     min-width: 2rem;
     padding: 0 1rem;
-
     border-radius: 500px;
     border: none;
-    background: linear-gradient(135deg, #ffb703 0%, #fb8500 100%);
+    background: linear-gradient(135deg, var(--sol-cta-warm) 0%, var(--sol-cta) 100%);
     color: #132238;
     font-weight: 700;
     text-shadow: none;
-    box-shadow: 0 12px 30px rgba(251, 133, 0, 0.3);
+    box-shadow: 0 10px 24px rgba(251, 133, 0, 0.26);
     display: flex;
-    align-items: center;     /* 🔥 FIX */
-    justify-content: center; /* optional */
+    align-items: center;
+    justify-content: center;
 }
 
 .quotationCompareBtn .sapMBtnContent {

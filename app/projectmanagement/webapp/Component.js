@@ -35,6 +35,11 @@ sap.ui.define([
 
             this.getRouter().attachBeforeRouteMatched(this._onBeforeRouteMatched, this);
 
+            // Save the current hash (e.g., from a reload) before auth starts
+            const oHashChanger = HashChanger.getInstance();
+            const sIntendedHash = oHashChanger.getHash();
+            sessionStorage.setItem("solarEpcIntendedHash", sIntendedHash || "");
+
             // Restore session from sessionStorage so page reload doesn't force re-login
             const sSavedAuth = sessionStorage.getItem("solarEpcAuth");
             if (sSavedAuth) {
@@ -79,6 +84,7 @@ sap.ui.define([
                         this._applyAuthorizationHeader(sAuthHeader);
                     }
 
+                    oSessionModel.setProperty("/currentRole", sCurrentRole);
                     oSessionModel.setData({
                         authPending: false,
                         authMode: oSession.authMode || "",
@@ -95,12 +101,19 @@ sap.ui.define([
                         unauthorized: false,
                         lastDeniedRoute: ""
                     });
-                    // setData doesn't fire propertyChange — explicitly trigger it so
-                    // any attachPropertyChange listeners (e.g. HomePage) react immediately.
-                    oSessionModel.setProperty("/currentRole", sCurrentRole);
+
+                    const sIntended = sessionStorage.getItem("solarEpcIntendedHash") || "";
+                    sessionStorage.removeItem("solarEpcIntendedHash");
 
                     const oHashChanger = HashChanger.getInstance();
                     const sHash = oHashChanger.getHash();
+
+                    if (sIntended && sIntended !== "LoginPage" && sIntended === sHash) {
+                        // We are already on the right route (e.g. Fiori Element template inner route)
+                        // Do not redirect to the default route.
+                        return;
+                    }
+
                     if (!sHash || sHash === "LoginPage") {
                         this.getRouter().navTo(this._getDefaultRouteForRole(sCurrentRole), {}, true);
                     }

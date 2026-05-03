@@ -3,8 +3,9 @@ sap.ui.define([
     "sap/ui/model/json/JSONModel",
     "sap/m/MessageToast",
     "sap/m/MessageBox",
+    "sap/ui/core/Fragment",
     "solar/epc/projectmanagement/service/RoleService"
-], function (Controller, JSONModel, MessageToast, MessageBox, RoleService) {
+], function (Controller, JSONModel, MessageToast, MessageBox, Fragment, RoleService) {
     "use strict";
 
     // Tile → route mapping per role.
@@ -160,38 +161,44 @@ sap.ui.define([
 
         // ── Event handlers ────────────────────────────────────────────────────
 
-        onRoleChange: function (oEvent) {
-            const sRole = oEvent.getSource().getSelectedKey();
-            if (!sRole) { return; }
+        onSwitchUser: function (oEvent) {
+            const oButton = oEvent.getSource();
+            const oView = this.getView();
 
-            const oSession = this.getOwnerComponent().getModel("session");
-            const bIsLocal = oSession.getProperty("/isLocalSimulation");
-
-            if (bIsLocal) {
-                // In local simulation, each UI role maps to a dedicated demo user.
-                // Re-authenticating ensures the CAP backend enforces the correct @restrict grants.
-                const DEMO_USERS = {
-                    "BDM":                 { u: "bdm1",      p: "pass" },
-                    "ENGINEER":            { u: "engineer1", p: "pass" },
-                    "PROJECT_MANAGER":     { u: "pm1",       p: "pass" },
-                    "PROCUREMENT_OFFICER": { u: "proc1",     p: "pass" },
-                    "SITE_ENGINEER":       { u: "site1",     p: "pass" },
-                    "FINANCE_OFFICER":     { u: "finance1",  p: "pass" },
-                    "MANAGEMENT":          { u: "mgmt1",     p: "pass" }
-                };
-                const oCreds = DEMO_USERS[sRole];
-                if (oCreds) {
-                    MessageToast.show("Switching to " + RoleService.getDisplayName(sRole) + "...");
-                    this.getOwnerComponent()
-                        .loginWithCredentials(oCreds.u, oCreds.p)
-                        .catch(function () {
-                            MessageToast.show("Role switch failed — credential error");
-                        });
-                    return;
-                }
+            if (!this._pDevUserSwitcher) {
+                this._pDevUserSwitcher = Fragment.load({
+                    id: oView.getId(),
+                    name: "solar.epc.projectmanagement.home.DevUserSwitcher",
+                    controller: this
+                }).then(function (oPopover) {
+                    oView.addDependent(oPopover);
+                    return oPopover;
+                });
             }
+            this._pDevUserSwitcher.then(function (oPopover) {
+                oPopover.openBy(oButton);
+            });
+        },
 
-            this._applyRole(sRole);
+        onSelectUser: function (oEvent) {
+            const oListItem = oEvent.getParameter("listItem");
+            const sUserId = oListItem.data("userId");
+            const sPass = sUserId === "admin" ? "admin" : "pass";
+
+            this.byId("devUserList").removeSelections(true);
+            this._pDevUserSwitcher.then(function(oPopover) {
+                oPopover.close();
+            });
+
+            MessageToast.show("Switching to user " + sUserId + "...");
+            this.getOwnerComponent()
+                .loginWithCredentials(sUserId, sPass)
+                .then(function () {
+                    window.location.reload();
+                })
+                .catch(function () {
+                    MessageToast.show("Failed to switch user");
+                });
         },
 
         onTodoPress: function (oEvent) {

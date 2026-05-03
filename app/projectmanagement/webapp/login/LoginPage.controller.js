@@ -23,10 +23,19 @@ sap.ui.define([
             const sPassword = oModel.getProperty("/password") || "";
 
             if (!sUsername && !sPassword) {
-                MessageToast.show("Checking XSUAA session...");
-                this.getOwnerComponent()._loadSession().catch(function () {
-                    MessageBox.error("No active XSUAA session was found. For local testing, enter a mocked username and password.");
-                });
+                // Only attempt XSUAA SSO when the server has explicitly declared
+                // authMode: "xsuaa". In local dev (kind: mocked) this path is
+                // skipped — credentials are always required.
+                const oComp = this.getOwnerComponent();
+                const sMode = oComp.getModel("session").getProperty("/authMode");
+                if (sMode === "xsuaa") {
+                    MessageToast.show("Checking XSUAA session…");
+                    oComp._loadSession().catch(function () {
+                        MessageBox.error("No active XSUAA session found. Enter your credentials.");
+                    });
+                } else {
+                    MessageBox.warning("Enter your username and password to sign in.", { title: "Sign In" });
+                }
                 return;
             }
 
