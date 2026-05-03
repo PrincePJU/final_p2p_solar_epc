@@ -1580,5 +1580,131 @@ annotate service.GRNReceipts with {
   CreatedAt  @title: 'Created On'   @Core.Computed: true;   // always system-managed
 }
 
+// ═══════════════════════════════════════════════════════════════
+// GRN RECEIPT ANALYTICS — Analytical List Page (ALP)
+// Entity: ProjectService.GRNReceiptAnalytics  (/project/)
+// Template: sap.fe.templates.AnalyticalListPage
+// 3 Charts: By Status (Column) | By Supplier (Bar) | By Unit (Donut)
+// ═══════════════════════════════════════════════════════════════
+
+annotate service.GRNReceiptAnalytics with @(
+
+  // ── Smart Filter Bar fields ────────────────────────────────────
+  UI.SelectionFields: [Status, Supplier, Unit, Material],
+
+  // ── Table (shared across all chart tabs) ──────────────────────
+  UI.LineItem: [
+    { $Type: 'UI.DataField', Value: ReceiptID,  Label: 'Receipt ID'  },
+    { $Type: 'UI.DataField', Value: Material,   Label: 'Material'    },
+    { $Type: 'UI.DataField', Value: Supplier,   Label: 'Supplier'    },
+    { $Type: 'UI.DataField', Value: PONumber,   Label: 'PO Number'   },
+    { $Type: 'UI.DataField', Value: Status,     Label: 'Status'      },
+    { $Type: 'UI.DataField', Value: Unit,       Label: 'Unit'        },
+    { $Type: 'UI.DataField', Value: Quantity,   Label: 'Quantity'    },
+    { $Type: 'UI.DataField', Value: Remarks,    Label: 'Remarks'     },
+    { $Type: 'UI.DataField', Value: CreatedAt,  Label: 'Created On'  }
+  ],
+
+  // ── Chart 1: Column — Quantity by Status (default) ────────────
+  UI.Chart: {
+    $Type              : 'UI.ChartDefinitionType',
+    Title              : 'GRN Quantity by Status',
+    Description        : 'Total received quantity grouped by receipt status',
+    ChartType          : #Column,
+    Dimensions         : [Status],
+    DimensionAttributes: [
+      { $Type: 'UI.ChartDimensionAttributeType', Dimension: Status, Role: #Category }
+    ],
+    Measures           : [Quantity],
+    MeasureAttributes  : [
+      { $Type: 'UI.ChartMeasureAttributeType', Measure: Quantity, Role: #Axis1 }
+    ]
+  },
+
+  // ── Chart 2: Bar — Quantity by Supplier ───────────────────────
+  UI.Chart #BySupplier: {
+    $Type              : 'UI.ChartDefinitionType',
+    Title              : 'GRN Quantity by Supplier',
+    Description        : 'Total received quantity per supplier',
+    ChartType          : #Bar,
+    Dimensions         : [Supplier],
+    DimensionAttributes: [
+      { $Type: 'UI.ChartDimensionAttributeType', Dimension: Supplier, Role: #Category }
+    ],
+    Measures           : [Quantity],
+    MeasureAttributes  : [
+      { $Type: 'UI.ChartMeasureAttributeType', Measure: Quantity, Role: #Axis1 }
+    ]
+  },
+
+  // ── Chart 3: Donut — Quantity by Unit type ────────────────────
+  UI.Chart #ByUnit: {
+    $Type              : 'UI.ChartDefinitionType',
+    Title              : 'GRN Quantity by Unit',
+    Description        : 'Receipt share by unit of measure',
+    ChartType          : #Donut,
+    Dimensions         : [Unit],
+    DimensionAttributes: [
+      { $Type: 'UI.ChartDimensionAttributeType', Dimension: Unit, Role: #Category }
+    ],
+    Measures           : [Quantity],
+    MeasureAttributes  : [
+      { $Type: 'UI.ChartMeasureAttributeType', Measure: Quantity, Role: #Axis1 }
+    ]
+  },
+
+  // ── PresentationVariant (default) — Status tab ────────────────
+  UI.PresentationVariant: {
+    GroupBy       : [Status],
+    Visualizations: ['@UI.Chart', '@UI.LineItem']
+  },
+
+  // ── PresentationVariant — Supplier tab ────────────────────────
+  UI.PresentationVariant #BySupplier: {
+    GroupBy       : [Supplier],
+    Visualizations: ['@UI.Chart#BySupplier', '@UI.LineItem']
+  },
+
+  // ── PresentationVariant — Unit tab ────────────────────────────
+  UI.PresentationVariant #ByUnit: {
+    GroupBy       : [Unit],
+    Visualizations: ['@UI.Chart#ByUnit', '@UI.LineItem']
+  },
+
+  // ── SelectionPresentationVariants — tie filter to each view ───
+  UI.SelectionPresentationVariant: {
+    Text              : 'By Status',
+    PresentationVariant: ![@UI.PresentationVariant]
+  },
+  UI.SelectionPresentationVariant #BySupplier: {
+    Text              : 'By Supplier',
+    PresentationVariant: ![@UI.PresentationVariant#BySupplier]
+  },
+  UI.SelectionPresentationVariant #ByUnit: {
+    Text              : 'By Unit',
+    PresentationVariant: ![@UI.PresentationVariant#ByUnit]
+  },
+
+  // ── Header info ───────────────────────────────────────────────
+  UI.HeaderInfo: {
+    TypeName      : 'GRN Receipt',
+    TypeNamePlural: 'GRN Receipts',
+    Title         : { $Type: 'UI.DataField', Value: ReceiptID },
+    Description   : { $Type: 'UI.DataField', Value: Material }
+  }
+);
+
+// ── Field titles + aggregation defaults ───────────────────────
+annotate service.GRNReceiptAnalytics with {
+  ReceiptID @title: 'Receipt ID';
+  Material  @title: 'Material'  @Analytics.Dimension: true;
+  Quantity  @title: 'Quantity'  @Analytics.Measure: true  @Aggregation.default: #SUM;
+  PONumber  @title: 'PO Number';
+  Supplier  @title: 'Supplier'  @Analytics.Dimension: true;
+  Unit      @title: 'Unit'      @Analytics.Dimension: true;
+  Status    @title: 'Status'    @Analytics.Dimension: true;
+  Remarks   @title: 'Remarks';
+  CreatedAt @title: 'Created On';
+}
 
 

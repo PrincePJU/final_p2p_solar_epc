@@ -134,6 +134,36 @@ service DashboardService @(path: '/dashboard') {
         sum(abs(valueVariance))                as totalVariance : Decimal(18,2)
   } group by invoice.purchaseOrder.project.ID, invoice.purchaseOrder.project.projectCode;
 
+  // ── GRN RECEIPT ANALYTICS — granular, ALP-ready ──────────────
+  // Row-level view of MaterialReceiptItems joined up to project/vendor.
+  // @Aggregation.ApplySupported enables the ALP to issue $apply
+  // groupby/aggregate queries entirely within the CAP OData V4 runtime.
+  @readonly
+  @Aggregation.ApplySupported: {
+    $Type              : 'Aggregation.ApplySupportedType',
+    Transformations    : ['aggregate', 'groupby', 'filter'],
+    Rollup             : #None,
+    GroupableProperties: [projectCode, vendorName, materialCategory, receiptStatus, condition],
+    AggregatableProperties: [
+      { $Type: 'Aggregation.AggregatablePropertyType', Property: receivedQty },
+      { $Type: 'Aggregation.AggregatablePropertyType', Property: acceptedQty },
+      { $Type: 'Aggregation.AggregatablePropertyType', Property: rejectedQty }
+    ]
+  }
+  view GRNReceiptAnalytics as select from epc.MaterialReceiptItems {
+    key ID,
+        receipt.purchaseOrder.project.projectCode  as projectCode         : String(20),
+        receipt.purchaseOrder.vendor.vendorName    as vendorName          : String(200),
+        material.category                          as materialCategory    : String(50),
+        material.description                       as materialDescription : String(200),
+        receipt.status                             as receiptStatus       : String(30),
+        condition,
+        uom,
+        receivedQty,
+        acceptedQty,
+        rejectedQty
+  };
+
   // ── KPI FUNCTION: OVERALL PROJECT HEALTH ─────────────────────
   function getProjectHealth(projectId: UUID) returns {
     projectCode       : String(20);
@@ -145,29 +175,336 @@ service DashboardService @(path: '/dashboard') {
   };
 }
 
-// ─── ANNOTATIONS: DASHBOARD VIEWS ────────────────────────────
-
+// ═══════════════════════════════════════════════════════════════
+// OVP ANNOTATIONS — ProjectSummary
+// sap.ovp.cards.v4.analyticalChart  (card01 in manifest)
+// ═══════════════════════════════════════════════════════════════
 annotate DashboardService.ProjectSummary with @(
+
   UI.LineItem: [
-    { Value: projectCode,          Label: 'Project Code'        },
-    { Value: projectName,          Label: 'Project Name'        },
-    { Value: status,               Label: 'Status'              },
-    { Value: capacityKWp,          Label: 'Capacity (kWp)'      },
-    { Value: budget,               Label: 'Budget'              },
-    { Value: spentAmount,          Label: 'Spent'               },
-    { Value: remainingBudget,      Label: 'Remaining'           },
-    { Value: budgetUtilizationPct, Label: 'Budget Used %'       }
-  ]
+    { Value: projectCode,          Label: 'Project Code'   },
+    { Value: projectName,          Label: 'Project Name'   },
+    { Value: status,               Label: 'Status'         },
+    { Value: budget,               Label: 'Budget'         },
+    { Value: spentAmount,          Label: 'Spent'          },
+    { Value: remainingBudget,      Label: 'Remaining'      },
+    { Value: budgetUtilizationPct, Label: 'Utilized %'     }
+  ],
+
+  UI.DataPoint#BudgetUtil: {
+    Value       : budgetUtilizationPct,
+    Title       : 'Budget Utilization %',
+    MaximumValue: 100,
+    Criticality : #Positive
+  },
+
+  UI.DataPoint#Spent: {
+    Value : spentAmount,
+    Title : 'Total Spent (INR)'
+  },
+
+  UI.Chart#BudgetChart: {
+    $Type              : 'UI.ChartDefinitionType',
+    Title              : 'Budget vs Spent by Project',
+    ChartType          : #Bar,
+    Dimensions         : [projectCode],
+    DimensionAttributes: [{ $Type: 'UI.ChartDimensionAttributeType', Dimension: projectCode, Role: #Category }],
+    Measures           : [spentAmount, remainingBudget],
+    MeasureAttributes  : [
+      { $Type: 'UI.ChartMeasureAttributeType', Measure: spentAmount,     Role: #Axis1 },
+      { $Type: 'UI.ChartMeasureAttributeType', Measure: remainingBudget, Role: #Axis1 }
+    ]
+  },
+
+  UI.SelectionVariant#AllProjects: { SelectOptions: [] },
+
+  UI.PresentationVariant#BudgetPV: {
+    Visualizations: ['@UI.Chart#BudgetChart', '@UI.LineItem']
+  },
+
+  UI.KPI#BudgetKPI: {
+    $Type           : 'UI.KPIType',
+    DataPoint       : ![@UI.DataPoint#BudgetUtil],
+    SelectionVariant: ![@UI.SelectionVariant#AllProjects],
+    ID              : 'BudgetKPI',
+    Detail          : {
+      $Type                      : 'UI.KPIDetailType',
+      DefaultPresentationVariant : ![@UI.PresentationVariant#BudgetPV]
+    }
+  }
 );
 
-annotate DashboardService.VendorPerformanceSummary with @(
+// ═══════════════════════════════════════════════════════════════
+// OVP ANNOTATIONS — ReceiptQuality  (GRN KPI card)
+// sap.ovp.cards.v4.analyticalChart  (card02 in manifest)
+// ═══════════════════════════════════════════════════════════════
+annotate DashboardService.ReceiptQuality with @(
+
   UI.LineItem: [
-    { Value: vendorCode,        Label: 'Vendor Code'       },
-    { Value: vendorName,        Label: 'Vendor Name'       },
-    { Value: totalOrders,       Label: 'Total Orders'      },
-    { Value: onTimeDeliveries,  Label: 'On-Time'           },
-    { Value: onTimeDeliveryPct, Label: 'OTD %'             },
-    { Value: qualityScore,      Label: 'Quality Score'     },
-    { Value: performanceScore,  Label: 'Overall Score'     }
-  ]
+    { Value: projectCode,    Label: 'Project'          },
+    { Value: totalDispatched,Label: 'Dispatched Qty'   },
+    { Value: totalAccepted,  Label: 'Accepted Qty'     },
+    { Value: totalRejected,  Label: 'Rejected Qty'     },
+    { Value: rejectionRate,  Label: 'Rejection Rate %' }
+  ],
+
+  UI.DataPoint#AcceptedDP: {
+    Value       : totalAccepted,
+    Title       : 'Total Accepted Qty',
+    Criticality : #Positive
+  },
+
+  UI.DataPoint#RejectionRateDP: {
+    Value       : rejectionRate,
+    Title       : 'Rejection Rate %',
+    MaximumValue: 100,
+    Criticality : #Negative
+  },
+
+  UI.Chart#ReceiptQualityChart: {
+    $Type              : 'UI.ChartDefinitionType',
+    Title              : 'Accepted vs Rejected Qty by Project',
+    ChartType          : #Bar,
+    Dimensions         : [projectCode],
+    DimensionAttributes: [{ $Type: 'UI.ChartDimensionAttributeType', Dimension: projectCode, Role: #Category }],
+    Measures           : [totalAccepted, totalRejected],
+    MeasureAttributes  : [
+      { $Type: 'UI.ChartMeasureAttributeType', Measure: totalAccepted, Role: #Axis1 },
+      { $Type: 'UI.ChartMeasureAttributeType', Measure: totalRejected, Role: #Axis1 }
+    ]
+  },
+
+  UI.SelectionVariant#RQSV: { SelectOptions: [] },
+
+  UI.PresentationVariant#RQPV: {
+    Visualizations: ['@UI.Chart#ReceiptQualityChart', '@UI.LineItem']
+  },
+
+  UI.KPI#ReceiptKPI: {
+    $Type           : 'UI.KPIType',
+    DataPoint       : ![@UI.DataPoint#AcceptedDP],
+    SelectionVariant: ![@UI.SelectionVariant#RQSV],
+    ID              : 'ReceiptKPI',
+    Detail          : {
+      $Type                      : 'UI.KPIDetailType',
+      DefaultPresentationVariant : ![@UI.PresentationVariant#RQPV]
+    }
+  }
 );
+
+// ═══════════════════════════════════════════════════════════════
+// OVP ANNOTATIONS — VendorPerformanceSummary
+// sap.ovp.cards.v4.analyticalChart  (card03 in manifest)
+// ═══════════════════════════════════════════════════════════════
+annotate DashboardService.VendorPerformanceSummary with @(
+
+  UI.LineItem: [
+    { Value: vendorCode,        Label: 'Vendor Code'   },
+    { Value: vendorName,        Label: 'Vendor Name'   },
+    { Value: totalOrders,       Label: 'Total Orders'  },
+    { Value: onTimeDeliveries,  Label: 'On-Time'       },
+    { Value: onTimeDeliveryPct, Label: 'OTD %'         },
+    { Value: qualityScore,      Label: 'Quality Score' },
+    { Value: performanceScore,  Label: 'Overall Score' }
+  ],
+
+  UI.DataPoint#OTDDP: {
+    Value       : onTimeDeliveryPct,
+    Title       : 'On-Time Delivery %',
+    MaximumValue: 100,
+    Criticality : #Positive
+  },
+
+  UI.Chart#VendorChart: {
+    $Type              : 'UI.ChartDefinitionType',
+    Title              : 'Vendor Performance Score',
+    ChartType          : #Donut,
+    Dimensions         : [vendorName],
+    DimensionAttributes: [{ $Type: 'UI.ChartDimensionAttributeType', Dimension: vendorName, Role: #Category }],
+    Measures           : [performanceScore],
+    MeasureAttributes  : [{ $Type: 'UI.ChartMeasureAttributeType', Measure: performanceScore, Role: #Axis1 }]
+  },
+
+  UI.SelectionVariant#VPSSV: { SelectOptions: [] },
+
+  UI.PresentationVariant#VPSPV: {
+    Visualizations: ['@UI.Chart#VendorChart', '@UI.LineItem']
+  },
+
+  UI.KPI#VendorKPI: {
+    $Type           : 'UI.KPIType',
+    DataPoint       : ![@UI.DataPoint#OTDDP],
+    SelectionVariant: ![@UI.SelectionVariant#VPSSV],
+    ID              : 'VendorKPI',
+    Detail          : {
+      $Type                      : 'UI.KPIDetailType',
+      DefaultPresentationVariant : ![@UI.PresentationVariant#VPSPV]
+    }
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════
+// OVP ANNOTATIONS — ProcurementKPI
+// sap.ovp.cards.v4.table  (card04 in manifest)
+// ═══════════════════════════════════════════════════════════════
+annotate DashboardService.ProcurementKPI with @(
+
+  UI.LineItem: [
+    { Value: projectCode,  Label: 'Project'        },
+    { Value: projectName,  Label: 'Project Name'   },
+    { Value: totalPOs,     Label: 'Total POs'      },
+    { Value: confirmedPOs, Label: 'Confirmed'      },
+    { Value: deliveredPOs, Label: 'Delivered'      },
+    { Value: cancelledPOs, Label: 'Cancelled'      },
+    { Value: totalPOValue, Label: 'PO Value (INR)' }
+  ],
+
+  UI.DataPoint#TotalPOValue: {
+    Value : totalPOValue,
+    Title : 'Total PO Value (INR)'
+  },
+
+  UI.Chart#ProcChart: {
+    $Type              : 'UI.ChartDefinitionType',
+    Title              : 'PO Value by Project',
+    ChartType          : #Bar,
+    Dimensions         : [projectCode],
+    DimensionAttributes: [{ $Type: 'UI.ChartDimensionAttributeType', Dimension: projectCode, Role: #Category }],
+    Measures           : [totalPOValue],
+    MeasureAttributes  : [{ $Type: 'UI.ChartMeasureAttributeType', Measure: totalPOValue, Role: #Axis1 }]
+  },
+
+  UI.SelectionVariant#ProcSV: { SelectOptions: [] },
+
+  UI.PresentationVariant#ProcPV: {
+    Visualizations: ['@UI.Chart#ProcChart', '@UI.LineItem']
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════
+// OVP ANNOTATIONS — InvoiceMatchingSummary
+// sap.ovp.cards.v4.list  (card05 in manifest)
+// ═══════════════════════════════════════════════════════════════
+annotate DashboardService.InvoiceMatchingSummary with @(
+
+  UI.LineItem: [
+    { Value: vendorName,    Label: 'Vendor'            },
+    { Value: totalInvoices, Label: 'Total Invoices'    },
+    { Value: matched,       Label: 'Matched'           },
+    { Value: mismatched,    Label: 'Mismatched'        },
+    { Value: approved,      Label: 'Approved'          },
+    { Value: paid,          Label: 'Paid'              },
+    { Value: totalValue,    Label: 'Total Value (INR)' }
+  ],
+
+  UI.DataPoint#InvoicePaid: {
+    Value       : paid,
+    Title       : 'Paid Invoices',
+    Criticality : #Positive
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════
+// OVP ANNOTATIONS — DeliveryPerformance  (card06 in manifest)
+// ═══════════════════════════════════════════════════════════════
+annotate DashboardService.DeliveryPerformance with @(
+
+  UI.LineItem: [
+    { Value: vendorName,       Label: 'Vendor'           },
+    { Value: totalDeliveries,  Label: 'Total Deliveries' },
+    { Value: onTime,           Label: 'On-Time'          },
+    { Value: delayed,          Label: 'Delayed'          },
+    { Value: avgDelayDays,     Label: 'Avg Delay (days)' },
+    { Value: maxDelayDays,     Label: 'Max Delay (days)' }
+  ],
+
+  UI.DataPoint#OTDRate: {
+    Value       : onTime,
+    Title       : 'On-Time Deliveries',
+    Criticality : #Positive
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════
+// OVP ANNOTATIONS — ThreeWayMatchSummary  (card07 in manifest)
+// ═══════════════════════════════════════════════════════════════
+annotate DashboardService.ThreeWayMatchSummary with @(
+
+  UI.LineItem: [
+    { Value: projectCode,   Label: 'Project'         },
+    { Value: totalLines,    Label: 'Total Lines'      },
+    { Value: matched,       Label: 'Matched'          },
+    { Value: qtyMismatch,   Label: 'Qty Mismatch'     },
+    { Value: priceMismatch, Label: 'Price Mismatch'   },
+    { Value: bothMismatch,  Label: 'Both Mismatch'    },
+    { Value: totalVariance, Label: 'Variance (INR)'   }
+  ],
+
+  UI.DataPoint#MatchRate: {
+    Value       : matched,
+    Title       : 'Matched Lines',
+    Criticality : #Positive
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════
+
+// ALP ANNOTATIONS — GRNReceiptAnalytics
+// Drives sap.fe.templates.AnalyticalListPage (GRNAnalytics target)
+// ═══════════════════════════════════════════════════════════════
+annotate DashboardService.GRNReceiptAnalytics with @(
+
+  // Filter fields shown in the Smart Filter Bar
+  UI.SelectionFields: [receiptStatus, projectCode, vendorName, materialCategory, condition],
+
+  // Table columns (bottom panel of ALP)
+  UI.LineItem: [
+    { $Type: 'UI.DataField', Value: projectCode,         Label: 'Project'           },
+    { $Type: 'UI.DataField', Value: vendorName,          Label: 'Vendor'            },
+    { $Type: 'UI.DataField', Value: materialCategory,    Label: 'Category'          },
+    { $Type: 'UI.DataField', Value: materialDescription, Label: 'Material'          },
+    { $Type: 'UI.DataField', Value: receiptStatus,       Label: 'Status'            },
+    { $Type: 'UI.DataField', Value: condition,           Label: 'Condition'         },
+    { $Type: 'UI.DataField', Value: uom,                 Label: 'UOM'               },
+    { $Type: 'UI.DataField', Value: receivedQty,         Label: 'Received Qty'      },
+    { $Type: 'UI.DataField', Value: acceptedQty,         Label: 'Accepted Qty'      },
+    { $Type: 'UI.DataField', Value: rejectedQty,         Label: 'Rejected Qty'      }
+  ],
+
+  // Chart (top panel of ALP) — driven by $apply groupby
+  UI.Chart: {
+    $Type              : 'UI.ChartDefinitionType',
+    Title              : 'GRN Quantity by Receipt Status',
+    ChartType          : #Column,
+    Dimensions         : [receiptStatus],
+    DimensionAttributes: [
+      { $Type: 'UI.ChartDimensionAttributeType', Dimension: receiptStatus, Role: #Category }
+    ],
+    Measures           : [receivedQty, acceptedQty, rejectedQty],
+    MeasureAttributes  : [
+      { $Type: 'UI.ChartMeasureAttributeType', Measure: receivedQty,  Role: #Axis1 },
+      { $Type: 'UI.ChartMeasureAttributeType', Measure: acceptedQty,  Role: #Axis1 },
+      { $Type: 'UI.ChartMeasureAttributeType', Measure: rejectedQty,  Role: #Axis1 }
+    ]
+  },
+
+  // Default presentation: show chart + table together
+  UI.PresentationVariant: {
+    GroupBy       : [receiptStatus, projectCode],
+    Visualizations: ['@UI.Chart', '@UI.LineItem']
+  }
+);
+
+// ── Field titles + aggregation defaults ──────────────────────
+annotate DashboardService.GRNReceiptAnalytics with {
+  projectCode         @title: 'Project Code';
+  vendorName          @title: 'Vendor';
+  materialCategory    @title: 'Material Category';
+  materialDescription @title: 'Material';
+  receiptStatus       @title: 'Receipt Status';
+  condition           @title: 'Condition';
+  uom                 @title: 'UOM';
+  receivedQty         @title: 'Received Qty'  @Aggregation.default: #SUM;
+  acceptedQty         @title: 'Accepted Qty'  @Aggregation.default: #SUM;
+  rejectedQty         @title: 'Rejected Qty'  @Aggregation.default: #SUM;
+}

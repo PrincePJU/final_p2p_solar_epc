@@ -121,6 +121,9 @@ sap.ui.define([], function () {
         ManagementDashboard: [
             "MANAGEMENT"
         ],
+        GRNAnalytics: [
+            "MANAGEMENT", "PROJECT_MANAGER", "PROCUREMENT_OFFICER"
+        ],
         POList: [
             "PROCUREMENT_OFFICER", "PROJECT_MANAGER", "MANAGEMENT"
         ],
@@ -156,17 +159,19 @@ sap.ui.define([], function () {
             },
             features: { insightCard: false },
             apps: {
-                approvedMRs:       false,
-                createMR:          false,
-                approveMR:         false,
-                manageVendors:     false,
-                compareQuotations: false,
-                createPO:          false,
-                trackDeliveries:   false,
-                postGR:            false,
-                reportDamage:      false,
-                validateInvoice:   false,
-                projectHealth:     false
+                approvedMRs:          false,
+                createMR:             false,
+                approveMR:            false,
+                manageVendors:        false,
+                compareQuotations:    false,
+                createPO:             false,
+                trackDeliveries:      false,
+                postGR:               false,
+                reportDamage:         false,
+                validateInvoice:      false,
+                projectHealth:        false,
+                managementOverview:   false,
+                grnAnalytics:         false
             }
         },
         ENGINEER: {
@@ -179,17 +184,19 @@ sap.ui.define([], function () {
             },
             features: { insightCard: false },
             apps: {
-                approvedMRs:       false,
-                createMR:          true,
-                approveMR:         false,
-                manageVendors:     false,
-                compareQuotations: false,
-                createPO:          false,
-                trackDeliveries:   false,
-                postGR:            false,
-                reportDamage:      false,
-                validateInvoice:   false,
-                projectHealth:     false
+                approvedMRs:          false,
+                createMR:             true,
+                approveMR:            false,
+                manageVendors:        false,
+                compareQuotations:    false,
+                createPO:             false,
+                trackDeliveries:      false,
+                postGR:               false,
+                reportDamage:         false,
+                validateInvoice:      false,
+                projectHealth:        false,
+                managementOverview:   false,
+                grnAnalytics:         false
             }
         },
         PROJECT_MANAGER: {
@@ -202,17 +209,19 @@ sap.ui.define([], function () {
             },
             features: { insightCard: true },
             apps: {
-                approvedMRs:       true,
-                createMR:          false,
-                approveMR:         true,
-                manageVendors:     true,
-                compareQuotations: true,
-                createPO:          false,
-                trackDeliveries:   true,
-                postGR:            false,
-                reportDamage:      false,
-                validateInvoice:   false,
-                projectHealth:     true
+                approvedMRs:          true,
+                createMR:             false,
+                approveMR:            true,
+                manageVendors:        true,
+                compareQuotations:    true,
+                createPO:             false,
+                trackDeliveries:      true,
+                postGR:               false,
+                reportDamage:         false,
+                validateInvoice:      false,
+                projectHealth:        true,
+                managementOverview:   false,
+                grnAnalytics:         true
             }
         },
         PROCUREMENT_OFFICER: {
@@ -225,17 +234,19 @@ sap.ui.define([], function () {
             },
             features: { insightCard: true },
             apps: {
-                approvedMRs:       true,
-                createMR:          false,
-                approveMR:         false,
-                manageVendors:     true,
-                compareQuotations: true,
-                createPO:          true,
-                trackDeliveries:   true,
-                postGR:            true,
-                reportDamage:      true,
-                validateInvoice:   false,
-                projectHealth:     true
+                approvedMRs:          true,
+                createMR:             false,
+                approveMR:            false,
+                manageVendors:        true,
+                compareQuotations:    true,
+                createPO:             true,
+                trackDeliveries:      true,
+                postGR:               true,
+                reportDamage:         true,
+                validateInvoice:      false,
+                projectHealth:        true,
+                managementOverview:   false,
+                grnAnalytics:         true
             }
         },
         SITE_ENGINEER: {
@@ -248,17 +259,19 @@ sap.ui.define([], function () {
             },
             features: { insightCard: false },
             apps: {
-                approvedMRs:       false,
-                createMR:          false,
-                approveMR:         false,
-                manageVendors:     false,
-                compareQuotations: false,
-                createPO:          false,
-                trackDeliveries:   true,
-                postGR:            true,
-                reportDamage:      true,
-                validateInvoice:   false,
-                projectHealth:     false
+                approvedMRs:          false,
+                createMR:             false,
+                approveMR:            false,
+                manageVendors:        false,
+                compareQuotations:    false,
+                createPO:             false,
+                trackDeliveries:      true,
+                postGR:               true,
+                reportDamage:         true,
+                validateInvoice:      false,
+                projectHealth:        false,
+                managementOverview:   false,
+                grnAnalytics:         false
             }
         },
         FINANCE_OFFICER: {
@@ -271,17 +284,19 @@ sap.ui.define([], function () {
             },
             features: { insightCard: true },
             apps: {
-                approvedMRs:       false,
-                createMR:          false,
-                approveMR:         false,
-                manageVendors:     false,
-                compareQuotations: false,
-                createPO:          false,
-                trackDeliveries:   false,
-                postGR:            false,
-                reportDamage:      false,
-                validateInvoice:   true,
-                projectHealth:     true
+                approvedMRs:          false,
+                createMR:             false,
+                approveMR:            false,
+                manageVendors:        false,
+                compareQuotations:    false,
+                createPO:             false,
+                trackDeliveries:      false,
+                postGR:               false,
+                reportDamage:         false,
+                validateInvoice:      true,
+                projectHealth:        true,
+                managementOverview:   false,
+                grnAnalytics:         false
             }
         },
         MANAGEMENT: {
@@ -294,17 +309,19 @@ sap.ui.define([], function () {
             },
             features: { insightCard: true },
             apps: {
-                approvedMRs:       true,
-                createMR:          true,
-                approveMR:         true,
-                manageVendors:     true,
-                compareQuotations: true,
-                createPO:          true,
-                trackDeliveries:   true,
-                postGR:            true,
-                reportDamage:      true,
-                validateInvoice:   true,
-                projectHealth:     true
+                approvedMRs:          true,
+                createMR:             true,
+                approveMR:            true,
+                manageVendors:        true,
+                compareQuotations:    true,
+                createPO:             true,
+                trackDeliveries:      true,
+                postGR:               true,
+                reportDamage:         true,
+                validateInvoice:      true,
+                projectHealth:        true,
+                managementOverview:   true,
+                grnAnalytics:         true
             }
         }
     };

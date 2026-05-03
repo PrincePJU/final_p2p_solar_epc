@@ -450,6 +450,26 @@
                                         </VBox>
                                     </HBox>
                                 </f:GridListItem>
+
+                                <f:GridListItem id="appManagementOverview" type="Active" press="onAppPress" visible="{view>/access/app_managementOverview}" data:appKey="managementOverview" data:appLabel="Management Overview Dashboard">
+                                    <HBox id="appManagementOverviewBox" class="appCardItem sapUiSmallPadding" alignItems="Center">
+                                        <core:Icon src="sap-icon://manager-insight" size="1.75rem" color="#0a6ed1" class="sapUiMediumMarginEnd" />
+                                        <VBox>
+                                            <Title text="Management Overview" level="H5" />
+                                            <Text text="OVP — Budget, GRN, Vendors &amp; Invoices" class="sapMAnnotatedText" />
+                                        </VBox>
+                                    </HBox>
+                                </f:GridListItem>
+
+                                <f:GridListItem id="appGRNAnalytics" type="Active" press="onAppPress" visible="{view>/access/app_grnAnalytics}" data:appKey="grnAnalytics" data:appLabel="GRN Receipt Analytics">
+                                    <HBox id="appGRNAnalyticsBox" class="appCardItem sapUiSmallPadding" alignItems="Center">
+                                        <core:Icon src="sap-icon://analytical-chart" size="1.75rem" color="#008A8A" class="sapUiMediumMarginEnd" />
+                                        <VBox>
+                                            <Title text="GRN Receipt Analytics" level="H5" />
+                                            <Text text="ALP — Filter, chart &amp; drill down by status" class="sapMAnnotatedText" />
+                                        </VBox>
+                                    </HBox>
+                                </f:GridListItem>
                             </f:GridList>
                         </IconTabFilter>
 

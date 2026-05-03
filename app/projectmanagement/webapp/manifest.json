@@ -82,13 +82,15 @@
     }
   },
   "sap.ui5": {
-    "flexEnabled": true,
+    "flexEnabled": false,
     "dependencies": {
       "minUI5Version": "1.147.1",
       "libs": {
         "sap.m": {},
         "sap.ui.core": {},
-        "sap.fe.templates": {}
+        "sap.fe.templates": {},
+        "sap.viz": {},
+        "sap.ui.comp": {}
       }
     },
     "contentDensities": {
@@ -183,9 +185,9 @@
           "target": "HomePage"
         },
         {
-          "pattern": "management-overview",
-          "name": "ManagementDashboard",
-          "target": "ManagementDashboard"
+          "pattern": "GRNReceiptAnalytics:?query:",
+          "name": "GRNAnalytics",
+          "target": "GRNAnalytics"
         },
         {
           "pattern": "Projects:?query:",
@@ -1111,11 +1113,27 @@
             }
           }
         },
-        "ManagementDashboard": {
-          "type": "View",
-          "id": "ManagementDashboard",
-          "name": "solar.epc.projectmanagement.management.ManagementDashboard",
-          "viewLevel": 2
+        "GRNAnalytics": {
+          "type": "Component",
+          "id": "GRNAnalytics",
+          "name": "sap.fe.templates.AnalyticalListPage",
+          "options": {
+            "settings": {
+              "contextPath": "/GRNReceiptAnalytics",
+              "defaultTemplateAnnotationPath": "@com.sap.vocabularies.UI.v1.SelectionPresentationVariant",
+              "variantManagement": "Page",
+              "initialLoad": true,
+              "controlConfiguration": {
+                "@com.sap.vocabularies.UI.v1.LineItem": {
+                  "tableSettings": {
+                    "type": "ResponsiveTable",
+                    "selectionMode": "None",
+                    "enableExport": true
+                  }
+                }
+              }
+            }
+          }
         },
         "LoginPage": {
           "type": "View",
@@ -1146,5 +1164,6 @@
     "app": {
       "enableLazyLoading": true
     }
-  }
+  },
+  "sap.ovp": {}
 }

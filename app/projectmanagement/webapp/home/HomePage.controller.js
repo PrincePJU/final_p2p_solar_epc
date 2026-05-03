@@ -18,7 +18,7 @@ sap.ui.define([
         "PROCUREMENT_OFFICER": { "Engineering & Projects": "ProjectsList", "Procurement": "POList", default: "POList" },
         "SITE_ENGINEER": { "Engineering & Projects": "ProjectsList", "Site Operations": "GRNList", default: "GRNList" },
         "FINANCE_OFFICER": { "Engineering & Projects": "ProjectsList", "Finance Cockpit": "InvoiceList", default: "InvoiceList" },
-        "MANAGEMENT": { "MyHome": "ManagementDashboard", "Engineering & Projects": "ProjectsList", "Procurement": "ProcurementMRList", "Site Operations": "DeliveryList", "Finance Cockpit": "InvoiceList", default: "ManagementDashboard" }
+        "MANAGEMENT": { "Engineering & Projects": "ProjectsList", "Procurement": "ProcurementMRList", "Site Operations": "DeliveryList", "Finance Cockpit": "InvoiceList", default: "HomePage" }
     };
 
     return Controller.extend("solar.epc.projectmanagement.home.HomePage", {
@@ -278,12 +278,19 @@ sap.ui.define([
                 "trackDeliveries":    "DeliveryList",
                 "postGR":             "GRNList",
                 "reportDamage":       "GRNList",
-                "validateInvoice":    "InvoiceList"
+                "validateInvoice":    "InvoiceList",
+                "managementOverview": "ManagementDashboard",
+                "grnAnalytics":       "GRNAnalytics"
             };
 
             if (oNavMap[sAppKey]) {
                 if (sAppKey === "compareQuotations") {
                     MessageToast.show("Loading Compare Quotations...");
+                }
+                if (sAppKey === "managementOverview") {
+                    // OVP is a standalone app — navigate to it by URL
+                    window.location.href = window.location.origin + "/managementoverview/webapp/index.html";
+                    return;
                 }
                 oRouter.navTo(oNavMap[sAppKey]);
                 return;

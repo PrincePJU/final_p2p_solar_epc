@@ -425,6 +425,39 @@ service ProjectService @(path: '/project') {
     // → MaterialReceipts.delivery → epc.Deliveries  (auto-expose collision)
     // → MaterialReceiptItems.deliveryItem → DeliveryItems.delivery → epc.Deliveries
   } excluding { receipt, receiptItem, invoiceItem, poItem };
+
+  // ── GRN RECEIPT ANALYTICS — ALP virtual entity ───────────────
+  // NOT a view of GRNReceipts (which is @odata.draft.enabled).
+  // @cds.persistence.skip: true → no DB table, no draft columns.
+  // FE ALP won't inject IsActiveEntity / DraftMessages.
+  // Data is served by a READ handler that reads from ProjectService_GRNReceipts (SQLite).
+  // The entity MUST be a real DB entity (no @cds.persistence.skip) so it appears in
+  // OData $metadata — without it, sap.fe.templates.AnalyticalListPage can't find the
+  // entity and the chart panel stays blank regardless of what data the handler returns.
+  @readonly
+  @restrict: [
+    { grant: ['READ'], to: ['Management','ProjectManager','ProcurementOfficer','Engineer','BDM','FinanceOfficer'] }
+  ]
+  @Aggregation.ApplySupported: {
+    $Type              : 'Aggregation.ApplySupportedType',
+    Transformations    : ['aggregate', 'groupby', 'filter'],
+    Rollup             : #None,
+    GroupableProperties: [Supplier, Status, Unit, Material],
+    AggregatableProperties: [
+      { $Type: 'Aggregation.AggregatablePropertyType', Property: Quantity }
+    ]
+  }
+  entity GRNReceiptAnalytics {
+    key ReceiptID : String;
+        Material  : String(40);
+        Quantity  : Integer;
+        PONumber  : String(20);
+        Supplier  : String(100);
+        Unit      : String(3);
+        Status    : String(20);
+        Remarks   : String(500);
+        CreatedAt : Timestamp;
+  }
 }
 
 // UI annotations are maintained in app/projectmanagement/annotations.cds
