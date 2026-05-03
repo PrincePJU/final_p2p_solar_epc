@@ -87,5 +87,54 @@
       ],
       "attribute-references": []
     }
+  ],
+  "tenant-mode": "dedicated",
+  "role-collections": [
+    {
+      "name": "SolarEPC_Management",
+      "description": "Full management access — all modules",
+      "role-template-references": [
+        "$XSAPPNAME.Management",
+        "$XSAPPNAME.ProjectManager",
+        "$XSAPPNAME.ProcurementOfficer",
+        "$XSAPPNAME.FinanceOfficer"
+      ]
+    },
+    {
+      "name": "SolarEPC_Procurement",
+      "description": "Procurement Officer access",
+      "role-template-references": [
+        "$XSAPPNAME.ProcurementOfficer"
+      ]
+    },
+    {
+      "name": "SolarEPC_Finance",
+      "description": "Finance Officer access",
+      "role-template-references": [
+        "$XSAPPNAME.FinanceOfficer"
+      ]
+    },
+    {
+      "name": "SolarEPC_Engineer",
+      "description": "Engineer + Site Engineer access",
+      "role-template-references": [
+        "$XSAPPNAME.Engineer",
+        "$XSAPPNAME.SiteEngineer"
+      ]
+    },
+    {
+      "name": "SolarEPC_ProjectManager",
+      "description": "Senior Engineer / PM access",
+      "role-template-references": [
+        "$XSAPPNAME.ProjectManager"
+      ]
+    },
+    {
+      "name": "SolarEPC_BDM",
+      "description": "Business Development Manager",
+      "role-template-references": [
+        "$XSAPPNAME.BDM"
+      ]
+    }
   ]
 }

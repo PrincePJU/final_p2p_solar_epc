@@ -149,23 +149,16 @@
                     <HBox alignItems="Center">
                         <Button id="btnSearch" icon="sap-icon://search" tooltip="Search" type="Transparent" class="sapUiSmallMarginEnd" />
                         <Button id="btnBell" icon="sap-icon://bell" tooltip="Notifications" type="Transparent" class="sapUiSmallMarginEnd" />
-                        <Select
-                            id="roleSelect"
-                            selectedKey="{view>/currentRole}"
-                            change="onRoleChange"
-
-                            visible="{session>/isLocalSimulation}"
-                            tooltip="Temporary demo: switch role">
-                            <items>
-                                <core:Item key="BDM" text="BDM" />
-                                <core:Item key="ENGINEER" text="Engineer" />
-                                <core:Item key="PROJECT_MANAGER" text="Senior Engineer" />
-                                <core:Item key="PROCUREMENT_OFFICER" text="Procurement" />
-                                <core:Item key="SITE_ENGINEER" text="Site Ops" />
-                                <core:Item key="FINANCE_OFFICER" text="Finance" />
-                                <core:Item key="MANAGEMENT" text="Management" />
-                            </items>
-                        </Select>
+                        <Toolbar id="devToolbar" visible="{session>/isLocalSimulation}" style="Clear" class="sapUiSmallMarginBegin">
+                            <core:Icon src="sap-icon://unlocked" color="#e9730c" />
+                            <Text text="DEV" class="sapMAnnotatedText" />
+                            <ToolbarSeparator />
+                            <Text text="User: {session>/userId}" />
+                            <ToolbarSeparator />
+                            <ObjectStatus text="{session>/currentRole}" state="Warning" inverted="true" />
+                            <ToolbarSeparator />
+                            <Button text="Switch User" icon="sap-icon://group" press="onSwitchUser" type="Transparent" />
+                        </Toolbar>
                     </HBox>
                 </HBox>
 
