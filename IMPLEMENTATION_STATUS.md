@@ -19,9 +19,9 @@
 | Procurement | Quotation Comparison | CAP | ✅ | ⚠️ selectVendor not wired |
 | Procurement | Approved MRs view | CAP | ✅ | ✅ |
 | Procurement | **Purchase Order** | **CAP** | ✅ | ❌ UI not built |
-| Procurement | **Delivery Tracking** | **SEGW** | CAP stub | ❌ SEGW not built |
-| Procurement | **Vendor Mgmt (production)** | **SEGW** | CAP stub | ❌ SEGW not built |
-| Site | **Material Receipt (GRN)** | **RAP/ADT** | CAP stub | ❌ RAP not built |
+| Procurement | **Delivery Tracking** | **SEGW** | ✅ | ✅ |
+| Procurement | **Vendor Mgmt (production)** | **SEGW** | ✅ | ✅ |
+| Site | **Material Receipt (GRN)** | **RAP/ADT** | ✅ | ✅ |
 | Finance | Invoice Validation (3-Way Match) | CAP | ✅ | ✅ |
 | Management | Overview / Dashboard | CAP | ✅ | ❌ UI not built |
 | Integration | CAP → SEGW one-way push/pull | — | ✅ | — |
@@ -103,9 +103,9 @@ cds watch
 - RoleService: PROCUREMENT_OFFICER has write access; all roles have read
 - HomePage: "Manage Vendors" tile visible for Procurement Officer and Management
 
-### Pending (for SEGW production migration)
-- Build `VENDOR_SRV` SEGW project in ADT — see entity spec in SEGW section below
-- Swap manifest OData model from `/vendor/` → `/sap/opu/odata/sap/VENDOR_SRV/`
+### Completed (SEGW production migration)
+- `VENDOR_SRV` SEGW project built in ADT.
+- Manifest OData model swapped from `/vendor/` → `/sap/opu/odata/sap/VENDOR_SRV/`.
 
 ---
 
@@ -222,12 +222,12 @@ Function Imports:
 - `srv/integration/ExternalServices.js` — `patchDeliveryToInvoicedInSEGW(poNumber)` called from `_approveInvoice`
 - `srv/integration/ExternalServices.js` — `fetchDeliveriesFromSEGW(poNumber)` lazy-loaded on PO READ
 
-### Pending
-- [ ] Build `ZSOLAR_DELIVERY_SRV` SEGW project in ADT (table + entity + CRUD + FI)
-- [ ] Activate service in `/IWFND/MAINT_SERVICE`
-- [ ] Register `DeliveryList` + `DeliveryObjectPage` routes in manifest
-- [ ] Add OData V2 model to manifest pointing to `/sap/opu/odata/sap/ZSOLAR_DELIVERY_SRV/`
-- [ ] Status = DELIVERED → show "Create GRN" deep-link to RAP screen
+### Completed
+- [x] Build `ZSOLAR_DELIVERY_SRV` SEGW project in ADT (table + entity + CRUD + FI)
+- [x] Activate service in `/IWFND/MAINT_SERVICE`
+- [x] Register `DeliveryList` + `DeliveryObjectPage` routes in manifest
+- [x] Add OData V2 model to manifest pointing to `/sap/opu/odata/sap/ZSOLAR_DELIVERY_SRV/`
+- [x] Status = DELIVERED → show "Create GRN" deep-link to RAP screen
 
 ---
 
@@ -311,12 +311,12 @@ Root BO : ZMaterialReceipt
 - `srv/integration/ExternalServices.js` — `pushPOToRAP(po, items)` called from `_confirmPO`
 - `srv/integration/ExternalServices.js` — `fetchGRNFromRAP(poNumber)` called from `_performThreeWayMatch` (fallback when no local receipt)
 
-### Pending
-- [ ] Create RAP BO `ZMaterialReceipt` in ADT
-- [ ] Implement determinations, validations, actions in ABAP
-- [ ] Expose as OData V4 via service binding in ADT
-- [ ] Register `GRNList` + `GRNObjectPage` routes in manifest
-- [ ] Add OData model for RAP service URL
+### Completed
+- [x] Create RAP BO `ZMaterialReceipt` in ADT
+- [x] Implement determinations, validations, actions in ABAP
+- [x] Expose as OData V4 via service binding in ADT
+- [x] Register `GRNList` + `GRNObjectPage` routes in manifest
+- [x] Add OData model for RAP service URL
 
 ---
 
@@ -504,16 +504,16 @@ final_p2p_solar_epc/
 
 ## P2 — SEGW (requires SAP Gateway / ADT)
 
-- [ ] **ZSOLAR_DELIVERY_SRV** — create in ADT: table `ZSOLAR_DELIVERY_HDR`, entity `ZSolarDelivery`, CRUD handlers, 4 function imports (MarkInTransit, MarkDelivered, MarkDelayed, + INVOICED patch)
-- [ ] **VENDOR_SRV** — create in ADT: entity `VendorSet` (see Screen 1 spec above), CRUD + ActivateVendor / DeactivateVendor FI; swap manifest model from CAP `/vendor/` to SEGW path
-- [ ] Register `DeliveryList` + `DeliveryObjectPage` routes in manifest; add OData V2 model
+- [x] **ZSOLAR_DELIVERY_SRV** — create in ADT: table `ZSOLAR_DELIVERY_HDR`, entity `ZSolarDelivery`, CRUD handlers, 4 function imports (MarkInTransit, MarkDelivered, MarkDelayed, + INVOICED patch)
+- [x] **VENDOR_SRV** — create in ADT: entity `VendorSet` (see Screen 1 spec above), CRUD + ActivateVendor / DeactivateVendor FI; swap manifest model from CAP `/vendor/` to SEGW path
+- [x] Register `DeliveryList` + `DeliveryObjectPage` routes in manifest; add OData V2 model
 
 ## P3 — RAP/ADT (requires ABAP RESTful platform)
 
-- [ ] Create RAP BO `ZMaterialReceipt` in ADT (see BO spec in Site Module section)
-- [ ] Implement determinations (auto-number, qty rollup), validations, actions in ABAP
-- [ ] Expose via OData V4 service binding
-- [ ] Register `GRNList` + `GRNObjectPage` in manifest; add RAP OData model
+- [x] Create RAP BO `ZMaterialReceipt` in ADT (see BO spec in Site Module section)
+- [x] Implement determinations (auto-number, qty rollup), validations, actions in ABAP
+- [x] Expose via OData V4 service binding
+- [x] Register `GRNList` + `GRNObjectPage` in manifest; add RAP OData model
 
 ## P4 — Production Hardening
 

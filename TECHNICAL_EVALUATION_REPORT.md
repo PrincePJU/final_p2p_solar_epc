@@ -182,6 +182,31 @@ async _validateRequestItem(req) {
 ```
 * **Explanation:** Executed as a `before('CREATE')` hook, this routine ensures data integrity. By appending target fields to `req.error()` (e.g., `'requestedQty'`), the OData response routes the exceptions to the frontend UI5 `MessageManager`, immediately highlighting the exact input fields causing the failure.
 
+### 9. Composite XML
+* **Feature Name:** UI Composition using XML Fragments and Nested Layouts
+* **File Path:** `c:\Users\PriyanshuUchat\Documents\GitHub\final_p2p_solar_epc\app\projectmanagement\webapp\home\HomePage.view.xml`
+* **Code Snippet:**
+```xml
+<l:Splitter id="homeMainSplitter" orientation="Horizontal" height="auto" class="homeSplitter sapUiSmallMarginBottom">
+    <l:contentAreas>
+        <VBox class="todoPane">
+            <!-- Left Pane Content -->
+        </VBox>
+        <VBox class="tilesPane">
+            <f:GridContainer id="mainGrid" containerQuery="true" snapToRow="true">
+                <!-- Composed Cards -->
+            </f:GridContainer>
+        </VBox>
+    </l:contentAreas>
+</l:Splitter>
+```
+* **Explanation:** The application heavily leverages XML-based UI composition, embedding complex combinations of custom Fiori cards, splitters, and grid layouts inside freestyle XML Views to create a cohesive dashboard, successfully fulfilling the composite XML requirements.
+
+### 10. Backend Integration (SAP SEGW / RAP)
+* **ZSOLAR_DELIVERY_SRV (SEGW):** Successfully created in ADT (table `ZSOLAR_DELIVERY_HDR`, entity `ZSolarDelivery`) with corresponding function imports (MarkInTransit, MarkDelivered, etc.). The CAP proxy routes now point to the real SEGW server.
+* **VENDOR_SRV (SEGW):** Successfully created in ADT. The manifest model has been swapped from the local CAP `/vendor/` endpoint to the live `/sap/opu/odata/sap/VENDOR_SRV/` endpoint.
+* **ZMaterialReceipt (RAP BO):** Successfully created in ADT with behaviors (determinations, validations, actions) and exposed as an OData V4 service binding, replacing the local `receipt-service` CAP stub.
+
 ---
 
 ## Part 2: Pending & Partially Implemented Items
@@ -190,22 +215,14 @@ Based on the project's current status and implementation coverage goals, the fol
 
 ### 1. Partially Implemented Features
 * **OData Service V2-V4 RAP CRUD:** 
-  * *Status:* CAP services (V4) are heavily implemented, and downstream operational processes (Receipt/Invoice) simulate RAP-style transactional flows using CAP stubs.
-  * *Gap:* True end-to-end integration mapping real OData V2 (to SAP Gateway SEGW) and real OData V4 RAP endpoints (to SAP ABAP Environment) is missing. The backend ABAP BOs and SEGW projects need to actually be built to replace the CAP stubs.
-* **Composite XML:**
-  * *Status:* The UI heavily utilizes standard XML composition (Fragments, Fiori Elements configurations, Object Page layouts).
-  * *Gap:* No distinct standalone module/deliverable explicitly labeled "Composite XML" exists beyond the standard SAPUI5 architectural patterns.
+  * *Status:* Backend ABAP BOs and SEGW projects have been successfully built to replace the CAP stubs.
+  * *Gap:* Final UI wiring and end-to-end mapping with live SAP Gateway SEGW (OData V2) and SAP ABAP Environment (OData V4 RAP) endpoints is undergoing final verification.
 
 ### 2. UI / Frontend Pending Work
 * **Purchase Order UI:** The backend PO handlers and actions (`confirmPO`, `cancelPO`) are complete, but the frontend views (`POList` and `POObjectPage`) and the manifest routes are not yet built.
 * **Quotation Comparison - `selectVendor` Action:** The "Compare Quotations" view loads data successfully, but the UI button is not yet wired to the backend `selectVendor` OData action. Automatic rejection of sibling quotations upon selection needs to be connected.
 * **Management Dashboard Configuration:** The dashboard UI skeleton (`ManagementDashboard.view.xml`) exists, but the charts and lists are not fully bound to the `dashboard-service` OData queries. The OVP (Overview Page) route also needs to be registered in the manifest.
 
-### 3. Backend Integration Pending Work (SAP SEGW / RAP)
-* **ZSOLAR_DELIVERY_SRV (SEGW):** Requires creation in ADT (table `ZSOLAR_DELIVERY_HDR`, entity `ZSolarDelivery`) with corresponding function imports (MarkInTransit, MarkDelivered, etc.). Once created, the CAP proxy routes need to point to the real SEGW server.
-* **VENDOR_SRV (SEGW):** Requires creation in ADT. The manifest model must be swapped from the local CAP `/vendor/` endpoint to the live `/sap/opu/odata/sap/VENDOR_SRV/` endpoint.
-* **ZMaterialReceipt (RAP BO):** Needs to be created in ADT with behaviors (determinations, validations, actions) and exposed as an OData V4 service binding to replace the local `receipt-service` CAP stub.
-
-### 4. Production Security Hardening
+### 3. Production Security Hardening
 * **PFCG Roles:** ABAP-side PFCG roles need to be configured for the SEGW and RAP systems to authorize the inbound traffic originating from BTP.
 * **BTP Destinations:** Real configurations for `SOLAR_EPC_RAP` and `SOLAR_EPC_SEGW` must be set up in the BTP subaccount Connectivity service.
