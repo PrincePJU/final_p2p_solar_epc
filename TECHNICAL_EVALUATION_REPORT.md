@@ -226,3 +226,30 @@ Based on the project's current status and implementation coverage goals, the fol
 ### 3. Production Security Hardening
 * **PFCG Roles:** ABAP-side PFCG roles need to be configured for the SEGW and RAP systems to authorize the inbound traffic originating from BTP.
 * **BTP Destinations:** Real configurations for `SOLAR_EPC_RAP` and `SOLAR_EPC_SEGW` must be set up in the BTP subaccount Connectivity service.
+
+
+
+{
+  "DeliveryNumber": "DEL-1019",
+  "PoNumber": "PO-5019",
+  "VendorId": "V004",
+  "ProjectCode": "PRJ-02",
+  "ScheduledDate": "/Date(1737244800000)/",
+  "Status": "DELIVERED",
+  "DelayReason": "",
+  "DelayDays": 0
+}
+
+
+
+
+{
+  "DeliveryNumber": "DEL-1019",
+  "PoNumber": "PO-5019",
+  "VendorId": "V004",
+  "ProjectCode": "PRJ-02",
+  "ScheduledDate": "/Date(1737244800000)/",
+  "Status": "DELIVERED",
+  "DelayReason": "",
+  "DelayDays": 0
+}
