@@ -17,3 +17,6 @@ mta_archives/
 
 # @cap-js/cds-typer
 @cds-models
+solar_epc.db-shm
+solar_epc.db-wal
+solar_epc.db
